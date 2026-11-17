@@ -1,0 +1,19 @@
+/* Keep legal layout with the component, independent of marketing CSS releases. */
+.document :global(.prose) { width:100%; max-width:none; min-width:0; overflow-wrap:anywhere; }
+.document :global(.legal-toc) ol { list-style:none; padding-left:0; }
+.document :global(.legal-toc) li { break-inside:avoid; margin-bottom:10px; }
+.document :global(.legal-toc) a { display:inline-block; padding-block:4px; }
+.document :global(.prose) > section[id] { scroll-margin-top:calc(var(--nav-h, 72px) + 24px); padding-block:24px; border-top:1px solid var(--line); }
+.document :global(.prose) > section[id] > h2 { margin-top:0; }
+.document :global(.prose) pre { max-width:100%; overflow-x:auto; }
+@media(min-width:1200px) {
+  .document :global(.prose) > section[id] { display:grid; grid-template-columns:minmax(200px,1fr) minmax(0,3fr); column-gap:clamp(24px,4vw,72px); }
+  .document :global(.prose) > section[id] > h2 { grid-column:1; grid-row:1; }
+  .document :global(.prose) > section[id] > :not(h2) { grid-column:2; min-width:0; }
+}
+@media(max-width:1199px) {
+  .document :global(.prose) > section[id] { display:block; }
+}
+@media(max-width:700px) {
+  .document :global(.legal-toc) ol { columns:1; }
+}

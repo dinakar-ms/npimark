@@ -1,0 +1,7 @@
+.np-ai-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:24px;margin:32px 0;align-items:start}
+.np-ai-card{background:white;border:1px solid #dce3ef;border-radius:20px;padding:clamp(20px,3vw,40px);box-shadow:0 12px 40px #24427a08;min-width:0}
+.np-ai-card h2{margin:18px 0 12px}.np-ai-card p{line-height:1.7}.np-ai-card label{display:block;font-weight:650;margin:16px 0 8px}
+.np-ai-card textarea,.np-ai-fields select,.np-ai-fields input{width:100%;box-sizing:border-box;padding:12px;border:1px solid #bac7dc;border-radius:10px;background:#fff;color:#17233e;font:inherit}
+.np-ai-examples{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0}.np-ai-examples .btn{white-space:normal;text-align:left}
+.np-ai-card li{margin:16px 0}.np-ai-card button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:800px){.np-ai-grid{grid-template-columns:1fr}}

@@ -1,0 +1,10 @@
+.panel {margin-block: 2rem; padding: clamp(1.2rem, 3vw, 2.5rem); border: 1px solid #d9e4e8; border-radius: 20px; background: #fff; color: #18333c; min-width: 0; scroll-margin-top: 6rem;}
+.panel h2 {font-size: clamp(1.6rem, 3vw, 2.4rem); margin-block: .4rem 1rem;}
+.panel label {display: block; font-weight: 650; margin-block: 1rem .5rem;}
+.panel input, .panel textarea, .panel select {display: block; width: 100%; max-width: 100%; box-sizing: border-box; padding: .85rem 1rem; border: 1px solid #879da5; border-radius: 9px; background: #fff; color: #18333c; font: inherit;}
+.panel :focus-visible {outline: 3px solid #147b90; outline-offset: 3px;}
+.grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 1rem; align-items: start;}
+.answer {padding: 1rem; margin-block: .5rem; border: 1px solid #d9e4e8; border-radius: 12px; overflow-wrap: anywhere;}
+.answer summary {cursor: pointer; font-weight: 650;}
+.answer p {line-height: 1.65; margin-block: .8rem;}
+.status {margin-block: 1rem; color: #475f68;}

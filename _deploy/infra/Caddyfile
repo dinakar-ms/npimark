@@ -1,0 +1,87 @@
+# Team phase: plain HTTP on the droplet's loopback; Tailscale Serve adds HTTPS and restricts access
+# to your tailnet. For the public SaaS phase, replace ":80" with the real domain and Caddy
+# obtains certificates automatically.
+{
+	admin off
+	servers {
+		trusted_proxies static private_ranges 100.64.0.0/10
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		# Nothing this server returns is ever for an index, an archive or a training set.
+		# index.html already carries `<meta name="robots" content="noindex">`, but a meta tag is
+		# only read inside HTML: it says nothing about a JSON response from /api, an asset, or an
+		# error page. This header covers every response, whatever its type.
+		#
+		# It is hygiene, not access control. Every directive here is a request a crawler is free to
+		# ignore, and a scraper that ignores it is precisely the reader we would not want. What
+		# actually keeps this private is that it is unreachable: `:80` on loopback behind Tailscale,
+		# with `/login` the only route that does not require a session. If this server ever learns a
+		# public hostname, this header does not become the defence - identity at the edge has to.
+		X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+		-Server
+	}
+
+	# Stated as a file as well as a header: a crawler asks for this before anything else, and a 404
+	# here is an absence of instruction rather than an instruction.
+	handle /robots.txt {
+		header Content-Type "text/plain; charset=utf-8"
+		respond "User-agent: *
+Disallow: /
+" 200
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000 {
+			health_uri /api/health
+			# 3s, not 10s: this is how quickly a recovered upstream is noticed again, and after
+			# a deploy that delay is added to the gap below.
+			health_interval 3s
+			health_timeout 2s
+			# A deploy replaces the api container, and for a few seconds there is no upstream at
+			# all. Without this, every request arriving in that window is a 503 the user sees -
+			# which is exactly how a release broke somebody's audience count mid-query.
+			#
+			# `lb_try_duration` makes Caddy *hold* such a request and keep looking for a healthy
+			# upstream instead of failing it. It is safe for a POST as well as a GET: this only
+			# applies while no upstream has been selected, so nothing has been dispatched and
+			# there is nothing to duplicate. The cost of a deploy becomes one slow request
+			# rather than one failed one.
+			#
+			# 30s is chosen against the thing being waited for: the api container answers
+			# /api/health about 3 seconds after it starts, so this is ten times the expected
+			# gap. A genuinely dead backend still fails, just not instantly.
+			lb_try_duration 30s
+			lb_try_interval 250ms
+		}
+	}
+
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		# Everything that is not a hashed asset is the single-page shell, and it must be
+		# revalidated on every load. index.html names the hashed bundle, so a browser holding
+		# an old copy keeps asking for the previous build: the deploy succeeds, the server
+		# serves the new bundle, and that user never sees it. Sending no Cache-Control at all
+		# left the decision to the browser's own heuristic, which is how a shipped release was
+		# invisible on 2026-10-01 - on the machine about to demo it.
+		#
+		# `no-cache` is revalidate-before-use, not do-not-store. The ETag still answers 304, so
+		# the cost is one conditional request per page load rather than a re-download, and the
+		# year-long immutable caching on /assets/* above is untouched.
+		@shell not path /assets/*
+		header @shell Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

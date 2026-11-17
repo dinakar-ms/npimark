@@ -1,0 +1,68 @@
+import { withSocialMetadata } from "@/lib/socialMetadata";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import {
+  FacilityListPage,
+  TaxonomyListPage,
+  facilityDescription,
+  facilityTitle,
+  taxonomyDescription,
+  taxonomyTitle,
+} from "@/components/ListPage";
+import { facilityTypeList, taxonomyList, type FacilityListDetail, type TaxonomyListDetail } from "@/lib/api";
+import { facilityKindForList, listPath } from "@/lib/lists";
+
+/**
+ * One list nationally: `/lists/cardiologists`, `/lists/nursing-homes`.
+ *
+ * A facility-type slug (the directory's own: hospitals, nursing-homes, ...) is a facility list;
+ * anything else is a taxonomy list, resolved by the platform. Below the floor the platform
+ * answers 404 and so does this page. Cached for a day.
+ */
+
+export const revalidate = 86_400;
+
+type Props = { params: Promise<{ slug: string }> };
+
+type Resolved =
+  | { kind: "taxonomy"; list: TaxonomyListDetail }
+  | { kind: "facility"; list: FacilityListDetail };
+
+async function resolve(slug: string): Promise<Resolved | null> {
+  if (!/^[a-z0-9-]{1,160}$/.test(slug)) return null;
+  if (facilityKindForList(slug)) {
+    const list = await facilityTypeList(slug);
+    return list ? { kind: "facility", list } : null;
+  }
+  const list = await taxonomyList(slug);
+  return list ? { kind: "taxonomy", list } : null;
+}
+
+async function readSocialMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const resolved = await resolve(slug);
+  if (!resolved) return { title: "List not found", robots: { index: false } };
+  const title = resolved.kind === "taxonomy" ? taxonomyTitle(resolved.list) : facilityTitle(resolved.list);
+  const description =
+    resolved.kind === "taxonomy" ? taxonomyDescription(resolved.list) : facilityDescription(resolved.list);
+  return {
+    title,
+    description,
+    alternates: { canonical: listPath(slug) },
+    openGraph: { title, description, type: "website" },
+  };
+}
+
+export default async function ListSlugPage({ params }: Props) {
+  const { slug } = await params;
+  const resolved = await resolve(slug);
+  if (!resolved) notFound();
+  const path = listPath(slug);
+  return resolved.kind === "taxonomy" ? (
+    <TaxonomyListPage list={resolved.list} path={path} />
+  ) : (
+    <FacilityListPage list={resolved.list} path={path} />
+  );
+}
+
+export const generateMetadata = withSocialMetadata(readSocialMetadata);

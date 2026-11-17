@@ -1,0 +1,19 @@
+.np-decision-network { margin-block:32px; padding:clamp(20px,3vw,40px); border:1px solid var(--line); border-radius:20px; background:var(--surface-2); scroll-margin-top:100px; }
+.np-decision-heading { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:24px; margin-bottom:28px; align-items:start; }
+.np-decision-heading h2 { margin-top:10px; font-size:clamp(26px,3vw,40px); }
+.np-decision-heading p { max-width:80ch; line-height:1.7; color:var(--muted); }
+.np-decision-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.np-decision-card { min-width:0; padding:clamp(20px,2vw,28px); border:1px solid var(--line); border-radius:14px; background:var(--paper); overflow-wrap:anywhere; }
+.np-decision-card h3 { margin:12px 0 18px; }
+.np-decision-card p { margin-bottom:14px; line-height:1.7; }
+.np-decision-note { display:block; margin-top:8px; }
+.np-decision-people { grid-column:1/-1; }
+.np-decision-people .rows { margin-bottom:20px; }
+.np-decision-role-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr)); gap:24px; margin-block:20px; }
+.np-decision-role-grid h4 { font-size:1rem; margin-bottom:12px; }
+.np-decision-role-grid ul,.np-decision-owners { list-style:none; margin:0; padding:0; }
+.np-decision-role-grid li,.np-decision-owners li { padding-block:12px; border-top:1px solid var(--line-soft); }
+.np-decision-role-grid li > span,.np-decision-owners li > span:not(.tag) { display:block; color:var(--muted); margin-top:5px; }
+.np-decision-owners .tag { margin:8px 8px 0 0; }
+.np-decision-footnote { margin-top:20px; max-width:110ch; }
+@media(max-width:760px) { .np-decision-grid,.np-decision-heading { grid-template-columns:minmax(0,1fr); } .np-decision-people { grid-column:auto; } }

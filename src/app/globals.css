@@ -1,0 +1,5745 @@
+/* ==========================================================================================
+   The design system.
+   ==========================================================================================
+
+   Two layers, in this order: tokens, then components. Every page on the site is built out of the
+   component classes below, so this file is the only place the site's appearance is decided - a
+   page inherits the system rather than declaring one.
+
+   ------------------------------------------------------------------------------------------
+   The palette: clinical navy, with one bright cyan.
+
+   Chosen by the owner out of five candidate home pages: the structure of the product-led
+   direction, with this one's colour. Deep violet rather than navy, because navy reads as every
+   other data vendor, and because the page wanted a ground that could hold a saturated accent
+   without turning corporate.
+
+   Citron (`--citron`, #CFF25F) is the accent, and it means exactly one thing: press this. It
+   fills the primary button and draws the focus ring, and it appears nowhere else. Where an accent
+   is wanted for text - a link, an icon, a step number, a bar - that is `--accent-ink`, which is
+   violet. The two are deliberately separate tokens: an eye that has learnt "citron means action"
+   in one second must not then find citron on a tick mark.
+
+   Citron is a dark-ground colour only. On white it measures about 1.4:1 and would be unreadable,
+   so in the light scheme `--accent` becomes solid violet with white on it, and citron survives on
+   the parts of the page that stay dark in both schemes.
+
+   ------------------------------------------------------------------------------------------
+   Two grounds, and which one a block stands on.
+
+   `--ink-ground` and its two lighter steps are the same in both colour schemes. Heroes, the
+   closing band and the footer stand on them always: that is where the display type is biggest,
+   where the colour fields live, and where citron has somewhere to work. Everything between - the
+   reading surfaces, the tables, the forms, the prose - flips with the reader's scheme.
+
+   The reading surface is lifted off the ink ground in *both* schemes, which is the whole reason
+   the alternation is legible. In the light scheme it lifts to near-white; in the dark scheme it
+   lifts to a violet-dark eight points of L* above the ink, so a hero, an `.on-ink` band, the
+   closing band and the footer still read as a darker ground rather than as more of the same. The
+   dark ladder and every pair measured against it are written out above the dark token block.
+
+   A block that wants the ink ground says so by carrying `.on-ink` (or by being `.hero`, `.cta` or
+   `.footer`, which always do). That class re-maps the flipping tokens to the ink set, so every
+   component inside it - a card, a stat, a button, a table - follows without a single extra rule.
+   That is the whole mechanism; there is no second palette.
+
+   The light scheme is designed rather than derived: #F6F4FB paper rather than white, so white
+   cards lift off it; violet-tinted hairlines rather than grey; and solid violet as the action
+   colour, which is the one place the two schemes genuinely diverge.
+
+   ------------------------------------------------------------------------------------------
+   Contrast, measured rather than assumed.
+
+   Flat pairs, computed (WCAG 2.1, sRGB):
+
+     light   ink #150B2C on paper #F6F4FB          17.25:1
+             ink on surface #FFFFFF                18.82:1
+             muted #574A6E on paper                 7.38:1
+             muted on surface                       8.05:1
+             accent-ink #5B21D6 on paper            7.31:1
+             on-accent #FFFFFF on accent #5B21D6    7.97:1
+             accent-ink on accent-soft #EDE6FE      6.59:1
+             ok #0B6B52 on ok-soft #DFF2EA          5.57:1   <- worst pair in the set
+             warn #8A4A00 on warn-soft #F9EBD8      5.85:1
+             stop #A4102F on stop-soft #FBE4E8      6.45:1
+
+     dark    ink #F6F3FE on paper #1E1440          15.59:1
+             ink on surface #281D50                13.87:1
+             muted #B8ABD6 on paper                 8.00:1
+             muted on surface                       7.12:1
+             muted on surface-2 #2F2356             6.58:1   <- worst pair in the dark scheme
+             accent-ink #C3ADFF on surface          7.77:1
+             accent-ink on accent-soft #3D2578      6.19:1
+             on-accent #0A0616 on citron #CFF25F   15.72:1
+             citron on surface                     12.60:1
+             ok #74E0AD on surface                  9.41:1
+
+     on ink  on-ink #F6F3FE on ink-ground          18.25:1
+             on-ink-muted #B8ABD6 on ink-ground     9.36:1
+             on-ink-muted over the glass wash       7.95:1
+
+   The worst pair anywhere in the token set is 5.57:1, against a 4.5:1 floor for body text. What
+   sits below either floor is decoration that carries no meaning and is never alone: the colour
+   fields, the grid, the grain, the card hairlines, and the fill behind every bar - each bar has
+   its number printed beside it in full-contrast text.
+
+   ------------------------------------------------------------------------------------------
+   The type: what the layout already loads, pushed hard.
+
+   No new font. Archivo (600/700) for display, IBM Plex Sans (400/500/600) for every sentence,
+   IBM Plex Mono (400/500) for numbers, labels and NPIs - which is what makes a figure look
+   counted rather than written.
+
+   One rule, taken off the reference sites: tracking is a function of size. -0.045em at a hero
+   headline, -0.032em at a section head, -0.02em at a card title, zero at body size. Leading
+   likewise: 0.88 at the headline, 1.0 at a section head, 1.62 in a paragraph. It is the single
+   detail that separates "big text" from typography.
+   ========================================================================================== */
+
+:root {
+  /* ---- the ink ground: identical in both schemes, so the signal always has somewhere to live */
+  --ink-ground: #041a2e;
+  --ink-ground-2: #0c3252;
+  --ink-ground-3: #154569;
+  --on-ink: #f1f7fb;
+  --on-ink-muted: #b0c8da;
+  /* Brass. It means exactly one thing: press this. It fills the primary button and draws the
+     focus ring, and it appears nowhere else. Where an accent is wanted for text - a link, an
+     icon, a step number, a bar - that is `--accent-ink`, which is sea. The two are deliberately
+     separate tokens: an eye that has learnt "brass means action" in one second must not then
+     find brass on a tick mark. */
+  --signal: #43cdf2;
+  --sea: #8fd6ea;
+  --sea-lt: #b6e6f3;
+  --rust: #eba355;
+  /* The second stroke in every icon. Decorative, never alone, never carrying meaning - it is what
+     stops eleven line drawings from reading as a dead grey row. */
+  --icon-2: var(--rust);
+
+  /* ---- a wash and a hairline, for the panels that stand on the ink ground */
+  --glass: linear-gradient(104deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  --glass-line: rgba(241, 247, 251, 0.15);
+  /* Laid paper, generated by the browser from an inline filter: no image file, no request, no
+     dependency. Lighter than the grain it replaces, because this system draws with rules rather
+     than with texture - it is here only to stop a large flat ink field reading as a hole. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.26'/%3E%3C/svg%3E");
+
+  /* ---- the flipping set, light scheme */
+  --paper: #f4f8fb;
+  --surface: #ffffff;
+  --surface-2: #f9fcfe;
+  --ink: #0c2237;
+  --muted: #49607a;
+  --line: #d4e2ec;
+  --line-soft: #e7f0f6;
+  /* `--accent` is the press-this colour and fills things. `--accent-ink` is the readable accent
+     and colours text. In the light scheme they are the same petrol; in the dark one they are
+     deliberately not - there, `--accent` is brass and `--accent-ink` is sea. */
+  --accent: #0b5fa5;
+  --accent-ink: #0b5fa5;
+  --accent-soft: #dcedf8;
+  --accent-glow: rgba(11, 95, 165, 0.18);
+  --ok: #0a7150;
+  --ok-soft: #dcf2e8;
+  --warn: #7e4c00;
+  --warn-soft: #f8ebd6;
+  --stop: #a4102f;
+  --stop-soft: #fae4e8;
+  --on-accent: #ffffff;
+  --grid: rgba(12, 34, 55, 0.05);
+  /* The product surfaces float. This site is a tool somebody is deciding whether to use, and a
+     search panel that sits flat on the page reads as a picture of one rather than one you could
+     touch. Rules still do the work inside a surface; the lift is what separates a surface from
+     the page it is on. */
+  --shadow: 0 1px 2px rgba(12, 34, 55, 0.05), 0 10px 24px -16px rgba(12, 34, 55, 0.35);
+  --lift: 0 2px 4px rgba(12, 34, 55, 0.06), 0 28px 56px -28px rgba(12, 34, 55, 0.42);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --nav-h: 68px;
+}
+
+/* ---- the flipping set, dark scheme
+ *
+ * The dark scheme's reading surface is *lifted*, not the ink ground - the alternation between a
+ * reading surface and the ink is what turns a stack of sections into a rhythm, and it only works
+ * if the ink stays at the bottom of the ladder alone. Measured in CIE L* rather than in contrast
+ * ratio, because at this end of the range the WCAG formula's flare term swamps the difference and
+ * a 1.17:1 pair can be an obvious step:
+ *
+ *   ink-ground   #06191b   L*  7.3    heroes, the closing band, the footer, `.on-ink`
+ *   paper        #122a29   L* 15.2    the reading surface           +7.8 over the ink
+ *   surface      #193a37   L* 22.0    a card, a panel, a plan       +6.8 over paper
+ *   surface-2    #1f4642   L* 26.9    a table header, a chip, code  +4.9 over surface
+ *   line         #2f5d57   L* 36.2    a hairline on a card          +9.3 over surface
+ *
+ * Every text pair, computed (WCAG 2.1, sRGB). The floor is 4.5:1 and the worst pair in the whole
+ * system is 5.84:1, so there is real headroom everywhere:
+ *
+ *   ink ground   on-ink 16.21   on-ink-muted 8.66 (7.20 on ground-2, 5.87 on ground-3)
+ *                brass 10.02, and ink-ground on brass 10.02 for the button's own label
+ *   light        ink on paper 14.99   ink on surface 16.80   muted on paper 6.31
+ *                muted on surface-2 6.71   accent on paper 6.98   white on accent 7.82
+ *                accent on accent-soft 6.31   ok on ok-soft 6.29   warn on warn-soft 6.00
+ *                stop on stop-soft 6.37
+ *   dark         ink on paper 13.57   ink on surface 11.07   muted on paper 8.47
+ *                muted on surface 6.91   muted on surface-2 5.84  <- worst pair in the system
+ *                accent-ink on paper 8.87   accent-ink on surface-2 6.12
+ *                accent-ink on accent-soft 6.57   ink-ground on brass 10.02
+ *                ok on ok-soft 7.57   warn on warn-soft 6.92   stop on stop-soft 7.02
+ *
+ * The focus ring is brass, which measures 5.79:1 on the palest dark surface, so focus stays
+ * plainly visible everywhere the lift reaches.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #102f4a;
+    --surface: #16395a;
+    --surface-2: #1c466b;
+    --ink: #f1f7fb;
+    --muted: #b4cade;
+    --line: #2a5c86;
+    --line-soft: #19405f;
+    --accent: #43cdf2;
+    --accent-ink: #8fd6ea;
+    --accent-soft: #113b52;
+    --accent-glow: rgba(67, 205, 242, 0.22);
+    --ok: #6fdcb4;
+    --ok-soft: #0d3a2c;
+    --warn: #e8b06a;
+    --warn-soft: #3d2c14;
+    --stop: #ff9aa8;
+    --stop-soft: #432128;
+    --on-accent: #041a2e;
+    --grid: rgba(241, 247, 251, 0.05);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 10px 24px -16px rgba(0, 0, 0, 0.7);
+    --lift: 0 2px 4px rgba(0, 0, 0, 0.5), 0 28px 56px -28px rgba(0, 0, 0, 0.9);
+  }
+}
+
+/* The same set again for the explicit override. The two have to agree, and they are kept adjacent
+   rather than shared through a third custom property so that neither can quietly drift. */
+:root[data-theme="dark"] {
+  --paper: #102f4a;
+  --surface: #16395a;
+  --surface-2: #1c466b;
+  --ink: #f1f7fb;
+  --muted: #b4cade;
+  --line: #2a5c86;
+  --line-soft: #19405f;
+  --accent: #43cdf2;
+  --accent-ink: #8fd6ea;
+  --accent-soft: #113b52;
+  --accent-glow: rgba(67, 205, 242, 0.22);
+  --ok: #6fdcb4;
+  --ok-soft: #0d3a2c;
+  --warn: #e8b06a;
+  --warn-soft: #3d2c14;
+  --stop: #ff9aa8;
+  --stop-soft: #432128;
+  --on-accent: #041a2e;
+  --grid: rgba(241, 247, 251, 0.05);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 10px 24px -16px rgba(0, 0, 0, 0.7);
+  --lift: 0 2px 4px rgba(0, 0, 0, 0.5), 0 28px 56px -28px rgba(0, 0, 0, 0.9);
+}
+
+/* ------------------------------------------------------------------------------------------
+   The ink ground, and every block that stands on it.
+
+   One rule re-maps the flipping tokens, and every component inside inherits the change: a card
+   becomes glass, a `.btn.primary` becomes citron, a hairline becomes white at low alpha, a table
+   header becomes a darker wash. Nothing inside needs to know where it is.
+
+   `.hero`, `.cta` and `.footer` are on this list rather than needing the class, because those
+   three are the site's dark furniture and several hundred pages already carry them.
+   ------------------------------------------------------------------------------------------ */
+.on-ink,
+.nav,
+.hero,
+.cta,
+.footer {
+  --paper: var(--ink-ground);
+  /* Glass on ink is a *dark* wash, not a white one. A white wash over a bright colour field
+     lightens the very surfaces that carry the smallest type - the window bar, the window foot, a
+     chip - and those measured under 4.5:1 against the violet. A dark wash with a white hairline
+     and a blur behind reads as glass just as clearly, keeps the field visible through it, and
+     puts every panel back over the floor. */
+  --surface: rgba(12, 7, 26, 0.62);
+  --surface-2: rgba(6, 3, 14, 0.68);
+  --ink: var(--on-ink);
+  --muted: var(--on-ink-muted);
+  --line: rgba(255, 255, 255, 0.14);
+  --line-soft: rgba(255, 255, 255, 0.09);
+  --accent: var(--signal);
+  --accent-ink: var(--sea-lt);
+  --accent-soft: rgba(127, 214, 196, 0.18);
+  --accent-glow: rgba(127, 214, 196, 0.3);
+  --on-accent: var(--ink-ground);
+  --grid: rgba(255, 255, 255, 0.062);
+  --ok: #9ae6c4;
+  --ok-soft: rgba(116, 224, 173, 0.15);
+  --warn: #f0c489;
+  --warn-soft: rgba(232, 176, 106, 0.16);
+  --stop: #ffb3bd;
+  --stop-soft: rgba(255, 154, 168, 0.16);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 18px 44px -26px rgba(0, 0, 0, 0.9);
+  --lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 26px 56px -28px rgba(0, 0, 0, 0.95);
+  background: var(--ink-ground);
+  color: var(--ink);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Smooth scrolling is motion, so it is asked for rather than assumed. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* The colour fields in a hero and in the closing band are wider than their box on purpose.
+     This is what keeps that from becoming a horizontal scrollbar at any width. */
+  overflow-x: clip;
+}
+
+main {
+  flex: 1;
+}
+
+/* Tracking and leading are a function of size, which is the one rule that separates
+   typography from big text. Each step down loosens both. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: -0.006em;
+  line-height: 1.14;
+  text-wrap: balance;
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(2.25rem, 5.4vw, 3.9rem);
+  font-weight: 700;
+  letter-spacing: -0.014em;
+  line-height: 1;
+}
+
+h2 {
+  font-size: clamp(1.55rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.04;
+}
+
+h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.006em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.92em;
+  /* What `.mono` holds is precisely the set of strings a browser will not break on its own: an
+     NPI, a CCN, a licence number, an employer's domain, a work email, a commit hash. Without
+     this, one long value sets the minimum width of whatever contains it - a table cell, a
+     definition list, a grid column - and pushes that container past the screen. `anywhere` rather
+     than `break-word` because only `anywhere` lowers the min-content size, which is the part that
+     lets the container shrink rather than merely letting the text wrap once it is too late.
+
+     `.contact-list .mono` already had `word-break: break-all` for the revealed contacts. This is
+     the same protection everywhere else the same kind of value is shown. */
+  overflow-wrap: anywhere;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Off the screen until it is focused, then above the sticky header rather than under it. */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 30;
+  transform: translateY(-300%);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* The header would otherwise cover the first lines of what the skip link jumped to. */
+#main {
+  scroll-margin-top: calc(var(--nav-h) + 8px);
+}
+
+/* The same problem, for anything that carries an id so it can be linked to: the bar is sticky, so
+   a jump that lands exactly on a section or a panel lands its heading underneath the bar. Keyed on
+   the id rather than on a class, because carrying an id *is* the statement that this block is a
+   link target - `.faq details` has the identical rule for the identical reason. */
+.section[id],
+.panel[id] {
+  scroll-margin-top: calc(var(--nav-h) + 16px);
+}
+
+/* ---------- layout ---------- */
+
+.wrap {
+  width: 100%;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.section {
+  padding-block: clamp(44px, 7vw, 88px);
+}
+
+.section + .section {
+  border-top: 1px solid var(--line-soft);
+}
+
+.section-head {
+  max-width: 62ch;
+  margin-bottom: clamp(24px, 4vw, 40px);
+}
+
+.section-head .lede {
+  margin-top: 12px;
+}
+
+/* A section head with a paragraph in it puts the paragraph beside the heading rather than under it.
+ *
+ * 62ch is the right measure for a line of prose and the wrong shape for a page. There are 31 of
+ * these on the site - an eyebrow, an `h2` and a lede - and every one of them was a 595-point column
+ * in a 1120-point wrap with the right half of the page empty beside it, six times down /data and
+ * eight times down /security. Stacked, each one is about 208 points tall; side by side, about 120,
+ * and the wrap is used. /security loses roughly 600 points of height to this and /data 500, without
+ * a word being cut.
+ *
+ * Three conditions, and the selector is the whole decision:
+ *
+ *   - `> .lede`, because a head with no paragraph has nothing to put in the second column, and
+ *     splitting it would only make the heading narrower and therefore taller. 28 of them are like
+ *     that and none of them change.
+ *   - `> h2`, because the seven heads that open a page carry its `h1`. A title and the sentence
+ *     under it are the site's opening move and they are one block; it is the head that repeats down
+ *     a long page that wastes the width.
+ *   - `.wrap:not(.narrow)`, because in a 760-point wrap there is no second column to move into.
+ *
+ * `:has()` rather than a modifier class on 31 call sites: the condition is "does this head contain a
+ * paragraph", which the stylesheet can see for itself and cannot get wrong, and a page that gains or
+ * loses a lede gets the right layout without anybody remembering to change a class. Below 900 points
+ * the declaration never applies and the head stacks, which is the only thing that fits there. */
+@media (min-width: 900px) {
+  .wrap:not(.narrow) > .section-head:has(> h2):has(> .lede) {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
+    column-gap: clamp(32px, 4vw, 68px);
+  }
+
+  /* The eyebrow spans, because it labels both columns. */
+  .wrap:not(.narrow) > .section-head:has(> h2):has(> .lede) > .eyebrow {
+    grid-column: 1 / -1;
+  }
+
+  /* The lede sits in the second column of the heading's own row, and its baseline is set against
+     the heading's last line rather than its first - which is what makes the two read as one block
+     instead of two things that happen to be level at the top. */
+  .wrap:not(.narrow) > .section-head:has(> h2):has(> .lede) > .lede {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    margin-top: 0;
+    max-width: 52ch;
+  }
+}
+
+.narrow {
+  max-width: 760px;
+}
+
+/* ---------- nav ---------- */
+
+/* The header, which belongs to the system rather than fighting it.
+ *
+ * It stands on the ink ground in both colour schemes, like the heroes and the footer, for one
+ * reason: it has to be able to float on a dark hero without a seam, and a bar that flipped to
+ * white in the light scheme could not. Solid is the default and the safe state - a page with no
+ * hero, or a browser that ran no JavaScript, gets a bar that is always readable against whatever
+ * is under it. The floating state is added, never assumed (see `NavLinks`).
+ */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--nav-h);
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, rgba(10, 6, 22, 0.95), rgba(10, 6, 22, 0.88));
+  backdrop-filter: saturate(150%) blur(14px);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+}
+
+/* Floating: only a scrim, so the hero's colour field runs unbroken behind the bar. Heaviest at
+   the very top and gone by the hairline, which is what keeps the small type in the bar over the
+   4.5:1 floor without flattening the light behind it. */
+:root[data-nav="float"] .nav {
+  background: linear-gradient(180deg, rgba(6, 3, 14, 0.58) 0%, rgba(6, 3, 14, 0.14) 100%);
+  border-bottom-color: transparent;
+}
+
+/* While the menu is open, the bar and the panel are one opaque surface. A translucent bar with an
+   opaque panel hanging off the bottom of it is two surfaces pretending to be the same one - and
+   measured rather than guessed, even 1% of the hero showing through a menu is legible when what is
+   behind it is a five-rem headline in white. */
+:root[data-menu="open"] .nav {
+  background: var(--ink-ground);
+  border-bottom-color: var(--line-soft);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nav {
+    transition: background 200ms ease, border-color 200ms ease;
+  }
+}
+
+.nav .wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+}
+
+.brand svg {
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+
+.brand span small {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1;
+  margin-top: 3px;
+}
+
+/* The one citron mark outside a button: the dot in the wordmark. It is a colour signature, not
+   an action, and it is the only exception the palette makes. */
+.brand .brand-dot {
+  fill: var(--signal);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.93rem;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current="page"] {
+  color: var(--ink);
+  /* A white wash rather than `--surface-2`: on the ink bar that token is *darker* than the bar,
+     so the current section read as a hole punched in the header rather than as a lit chip. */
+  background: rgba(255, 255, 255, 0.09);
+}
+
+/* The two actions at the end of the bar, and nothing else on the site. Twenty-two call sites used
+   to borrow this class for a plain row of two buttons under a lede, which is what `.actions` is
+   for; they have all moved there, so this is now scoped to the header and says so. That matters
+   because the two rows want opposite things: the bar must stay on one line at every width, and a
+   row of actions in the page body must wrap on a phone. */
+.nav .nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* ---------- the menu, below 760px ----------
+ *
+ * The four primary links leave the bar at 760px, because there is no width at which a wordmark,
+ * four links and two actions all fit and stay legible. Until now that was the end of them: they
+ * were `display: none` and a copy in the footer, which is a site with no menu on a phone.
+ *
+ * The disclosure that gives them back is a button and a panel (`components/NavLinks.tsx`). The
+ * button sits immediately after the wordmark rather than being pushed to the end of the bar, for
+ * one reason that matters more than the convention: it is rendered by script, and an auto margin
+ * on it would have moved the two actions sideways the moment it appeared. Where it is, nothing
+ * that was already in the bar moves when it arrives.
+ *
+ * `.nav-nav` is `display: contents`: it exists so the component has one element to ask "is this
+ * click inside the menu", and it must not be a box, or the links, the button and the panel would
+ * stop being laid out by the bar itself.
+ */
+.nav-nav {
+  display: contents;
+}
+
+.nav-toggle {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  /* The glass recipe: on the ink bar `--surface` is a dark translucent wash. */
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nav-toggle svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.nav-toggle:hover {
+  border-color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .nav-links {
+    display: none;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+}
+
+/* Below 400px the bar is a mark, a menu and two actions in 320 to 400 points, and it does not fit
+   at full size - it overflowed by 5px at 320. Nothing is dropped to make it: the word stays on the
+   button and both actions stay in the bar, and what gives instead is padding, which is what
+   padding is for. */
+@media (max-width: 400px) {
+  .nav .wrap {
+    padding-inline: 14px;
+  }
+
+  .nav-toggle {
+    gap: 6px;
+    padding: 8px 11px;
+  }
+}
+
+/* The panel drops from the bottom edge of the bar and spans it. `.nav` is sticky, so it is the
+   positioned ancestor this is measured from, and the panel travels with the bar rather than with
+   the page. It is absolutely positioned, so opening it moves nothing. */
+.nav-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: grid;
+  padding: 12px 20px 18px;
+  /* Opaque, and the ink ground rather than the glass recipe: what is behind a menu is the page it
+     is a menu for, and reading a headline through it is not an effect, it is a mistake. */
+  background: var(--ink-ground);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--lift);
+  /* A short phone in landscape still gets to the bottom of it. */
+  max-height: calc(100dvh - var(--nav-h));
+  overflow-y: auto;
+}
+
+/* `display: grid` above would otherwise beat the `hidden` attribute, and the panel would be open
+   for everybody all the time. */
+.nav-panel[hidden] {
+  display: none;
+}
+
+/* Above the breakpoint there is no menu: the bar carries the links itself. The component closes
+   the panel on the same query, so focus is never left inside something that is not drawn. */
+@media (min-width: 761px) {
+  .nav-panel {
+    display: none;
+  }
+}
+
+.nav-panel-links {
+  display: grid;
+}
+
+.nav-panel-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.nav-panel-links a:hover,
+.nav-panel-links a[aria-current="page"] {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.nav-panel-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.nav-panel-actions .btn {
+  width: 100%;
+}
+
+/* A phone has room for the mark, a name and two buttons - but not all of them at full size.
+   Below 560px the wordmark drops its text and the buttons tighten, because the alternative is
+   what was happening here: the brand and the actions overlapping in the middle of the bar once
+   the page scrolled. Both actions stay - "Sign in" for the customer who has an account and
+   "Start free" for the one who does not is what the header is for, and dropping either to save
+   sixty pixels would cost more than it saves. The mark keeps the link's accessible name, so
+   hiding the text leaves nothing unlabelled. */
+@media (max-width: 560px) {
+  .nav .wrap {
+    gap: 12px;
+  }
+
+  /* Scoped to the bar: the footer uses the same wordmark and has all the room in the world. */
+  .nav .brand span {
+    display: none;
+  }
+
+  .nav .nav-actions {
+    gap: 6px;
+  }
+
+  .nav .nav-actions .btn {
+    padding: 8px 13px;
+    font-size: 0.85rem;
+  }
+}
+
+/* ---------- buttons ---------- */
+
+/* The secondary button is the glass recipe wherever the ground is ink, because `--surface`
+   there is a translucent wash: a hairline of white, the wash, and a blur behind. On a light
+   reading surface the same declarations resolve to a plain white pill. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.94rem;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.btn:hover {
+  border-color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn {
+    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* The primary action, and the only place citron is ever used to fill something. The coloured
+   glow is the only tinted shadow in the system, which is how the action reads as lit rather than
+   merely filled. */
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 10px 30px -14px var(--accent-glow);
+}
+
+.btn.primary:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 14px 36px -14px var(--accent-glow);
+}
+
+.btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.btn.ghost:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.btn.lg {
+  padding: 15px 28px;
+  font-size: 1.02rem;
+}
+
+.btn.sm {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.btn.block {
+  width: 100%;
+}
+
+/* ---------- hero ---------- */
+
+/* The hero: the ink ground and its light.
+ *
+ * No photograph and no image file. Four oversized colour fields, a scrim that pulls the reading
+ * column back over the contrast floor, a ruled grid that dissolves downward, and a grain wash the
+ * browser generates from an inline SVG filter. Two pseudo-elements carry all of it, which is why
+ * every layer is a background-image rather than an element - the hero starts under the header and
+ * has to sit behind whatever the page puts in it.
+ *
+ * It begins under the floating header rather than below it: `--nav-h` of extra top padding, and a
+ * negative top margin so the field runs up behind the bar.
+ */
+.hero {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  margin-top: calc(var(--nav-h) * -1);
+  padding-block: calc(var(--nav-h) + clamp(44px, 6vw, 84px)) clamp(48px, 7vw, 92px);
+}
+
+/* A hero whose content ends at the lede.
+ *
+ * The bottom padding of a full hero is there to give something room: the product panels on the
+ * home page, the figure strip on `/data`. On a page that has neither - a help article is a
+ * breadcrumb, a title and a sentence - the same padding is not breathing room, it is a tall empty
+ * band of colour field with nothing in it, which is what it looked like. This takes the bottom
+ * back to the space a paragraph actually wants under it. It is a modifier rather than a rule about
+ * the last child, because whether a hero is carrying anything is the page's decision to state. */
+.hero.short {
+  padding-bottom: clamp(30px, 3.4vw, 46px);
+}
+
+/* The colour fields, and the scrim over them. The scrim is heaviest on the left, where the
+   reading column is, and lightest through the middle-right, where panels sit and nothing has to
+   be read off the gradient. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: linear-gradient(
+      104deg,
+      rgba(3, 14, 26, 0.52) 0%,
+      rgba(3, 14, 26, 0.28) 40%,
+      rgba(3, 14, 26, 0.12) 70%,
+      rgba(3, 14, 26, 0.3) 100%
+    ),
+    radial-gradient(1320px 960px at 4% 2%, rgba(11, 95, 165, 0.95), transparent 68%),
+    radial-gradient(1100px 820px at 98% -8%, rgba(31, 120, 180, 0.5), transparent 66%),
+    radial-gradient(1000px 760px at 78% 54%, rgba(8, 46, 82, 0.42), transparent 68%),
+    /* Brass low at the foot, where the call to action sits - the one warm note on the page,
+       and it is under the button rather than anywhere else. */
+      radial-gradient(1500px 780px at 44% 112%, rgba(67, 205, 242, 0.18), transparent 62%);
+  pointer-events: none;
+}
+
+/* The texture: grain and a ruled grid, dissolved downward so the grid ends by fading rather than
+   by being cut. Both are decoration and neither carries meaning. */
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.55;
+  background-image: var(--grain), linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 160px 160px, 74px 74px, 74px 74px;
+  mask-image: linear-gradient(to bottom, #000 4%, rgba(0, 0, 0, 0.4) 50%, transparent 86%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 4%, rgba(0, 0, 0, 0.4) 50%, transparent 86%);
+  pointer-events: none;
+}
+
+.hero .wrap {
+  display: grid;
+  /* `minmax(0, 1fr)` rather than the implicit `auto`: a grid column sized `auto` takes its
+     min-content width from what is in it, and what is in a hero here is a table inside a scroll
+     container. Without the explicit floor the column grew to the table's width and took the page
+     with it - 677px of content inside a 390px phone. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 26px;
+  justify-items: center;
+  text-align: center;
+}
+
+.hero h1 {
+  max-width: 20ch;
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  line-height: 0.92;
+  letter-spacing: -0.014em;
+}
+
+.hero .lede {
+  font-size: clamp(1.04rem, 1.7vw, 1.22rem);
+  max-width: 58ch;
+  margin-top: 0;
+}
+
+/* The eyebrow stands on the brightest part of the violet field, where the muted ink measures
+   under the floor on its own. Rather than bleach it white - which would make it shout as loudly
+   as the headline - it gets a glass chip sized to the text. */
+.hero .eyebrow {
+  padding: 6px 15px 6px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(6, 3, 14, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* The hero's own display type, gradient-clipped. Used for one line of a headline at most, and
+   only ever alongside lines in full-strength ink - the graded line is 3:1 large-text territory
+   at its dimmest end, which is why it never carries a sentence on its own. */
+.grade {
+  background-image: linear-gradient(102deg, var(--on-ink) 10%, var(--sea-lt) 48%, var(--signal) 98%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .grade {
+    color: var(--on-ink);
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
+/* The full stop after a headline, in citron. The one decorative use of the accent, and it sits
+   beside nothing pressable - a mark, not an offer. */
+.stop-dot {
+  color: var(--signal);
+}
+
+/* The split hero: the argument on the left, the product on the right. One column until there is
+   genuinely room for two, which for a headline this size is past a laptop width. Left-aligned in
+   both layouts - centred text under a five-line lede is a poster, not a page. */
+.hero.split .wrap {
+  text-align: left;
+  justify-items: stretch;
+}
+
+/* `minmax(0, 1fr)` for the reason written against `.hero .wrap` above: the implicit `auto` track
+   takes its floor from the widest min-content in the column, and the search pill's is 323px. */
+.hero.split .hero-copy {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  justify-items: start;
+}
+
+.hero.split h1 {
+  max-width: 17ch;
+}
+
+@media (min-width: 1040px) {
+  .hero.split .wrap {
+    grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+    column-gap: 52px;
+    row-gap: clamp(30px, 4vw, 48px);
+    align-items: start;
+  }
+
+  .hero.split .hero-stage {
+    grid-row: span 2;
+  }
+
+  .hero.split .hero-base {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The product panels beside the headline. They are allowed to overflow their column to the right
+   at wide widths, which is what makes them read as software sitting on the page rather than as an
+   illustration boxed into a grid cell. */
+.hero-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (min-width: 1040px) {
+  .hero-stage {
+    margin-right: clamp(-96px, -4vw, 0px);
+  }
+}
+
+.hero-base {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  margin-top: clamp(28px, 4vw, 44px);
+}
+
+.eyebrow {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.eyebrow svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* The live dot. Citron where the ground is ink, because on ink it is the pulse of a page that
+   just read the platform; the green semantic tokens have nowhere to sit against violet. */
+.eyebrow .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 4px var(--ok-soft);
+}
+
+.hero .eyebrow .dot,
+.on-ink .eyebrow .dot,
+.cta .eyebrow .dot,
+.footer .eyebrow .dot {
+  background: var(--signal);
+  box-shadow: 0 0 0 4px rgba(67, 205, 242, 0.16);
+}
+
+.eyebrow.rule {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.eyebrow.rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.lede {
+  color: var(--muted);
+  max-width: 64ch;
+  margin-top: 14px;
+  font-size: 1.05rem;
+  line-height: 1.62;
+  letter-spacing: -0.005em;
+}
+
+/* ---------- search bar ---------- */
+
+/* The search pill. On ink it is glass: the translucent wash, a hairline of white, and a blur
+   behind - which is what lets the colour field read through the site's most prominent control
+   instead of being interrupted by it.
+ *
+ * `min-width: 0` for the same reason on both pills (see `.probe-form`): an `<input>` reports a
+ * 20-character intrinsic width - 209px here - and the submit button is `nowrap`, so the pill's
+ * min-content is 323px. As a grid item with a content-based automatic minimum it held the hero's
+ * copy column open at 323px inside a 280px hero, and `.hero`'s own `overflow: hidden` then cut the
+ * headline, the eyebrow chip and the Search button off at the right edge at 320px and 360px. */
+.searchbar {
+  width: 100%;
+  max-width: 720px;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.searchbar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.02rem;
+  padding: 10px 16px;
+}
+
+/* The pill has no border of its own around the input, so the focus ring sits inside it rather
+   than being clipped by the rounded edge. It used to be `outline: none` with nothing in its
+   place, which left the site's most prominent field with no focus indicator at all. */
+.searchbar input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 999px;
+}
+
+.searchbar input::placeholder {
+  color: var(--muted);
+}
+
+.searchbar .btn {
+  flex-shrink: 0;
+}
+
+.hints {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.hints a {
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 5px 12px;
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.hints a:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+/* ---------- stats ---------- */
+
+/* A row of read figures. The 1px gap is the grid's own background showing through, which is the
+   one construction that survives the row wrapping onto a second line - a border on each cell
+   cannot, because the first cell of a wrapped row has no way to know it is first.
+ *
+ * Every figure in one of these is read from the platform. A figure that could not be read is left
+ * out by the page that builds the row, so the row gets shorter rather than printing a nought. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 1px;
+  /*background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);*/
+  width: 100%;
+  /*box-shadow: var(--shadow);*/
+  /*overflow: hidden;*/
+}
+
+.stat {
+  background: var(--surface);
+  text-align: left;
+  -webkit-backdrop-filter: blur(14px);
+  padding: 22px 24px;
+}
+
+.stat .value {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+  letter-spacing: 0;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+
+.stat .label {
+  display: block;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* ---------- sources strip ---------- */
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 14px;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.strip span {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* ---------- cards ---------- */
+
+/* `min(Npx, 100%)` rather than a bare `Npx` floor, in all three auto-fit grids on the site.
+   A track minimum is a *minimum*: `minmax(320px, 1fr)` in a 280px content box - which is what a
+   `.wrap` gives at a 320px viewport - produces a 320px track and 20px of horizontal page scroll,
+   on /pricing, /directory, /contact, every profile, every facility, /app and /app/owner. The
+   floor is what the card wants when there is room, so it has to yield when there is not. */
+.grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+
+.grid.two {
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+}
+
+.grid.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* Exactly two columns - for four cards (a clean 2x2 rather than three and an orphan) and for
+   side-by-side panels. One column on a phone. */
+.grid.pairs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+  .grid.pairs {
+    grid-template-columns: 1fr;
+  }
+}
+
+a.card.feature {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.card.feature:hover {
+  border-color: var(--accent-ink);
+}
+
+/* A card carries a violet hairline across its top edge: the one piece of colour in the system
+   that is applied to a surface rather than to type or to an action. It is a background layer
+   rather than a pseudo-element, so a card can still hold absolutely positioned content and a
+   focus ring inside it is never clipped. */
+.card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--sea) 60%, transparent),
+        transparent
+      )
+      top / 100% 1px no-repeat,
+    var(--surface);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+
+.card h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.card .icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.card .icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.card.feature {
+  gap: 14px;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.panel + .panel {
+  margin-top: 16px;
+}
+
+.panel h2 {
+  font-size: 1.15rem;
+  margin-bottom: 12px;
+}
+
+/* Two paragraphs in a row are two paragraphs. `p { margin: 0 }` is right for a layout assembled
+   out of grids and their gaps, but a panel is a plain block, and the three paragraphs under "When
+   you reach a limit" on /app/billing ran together into one wall with no seam in it. Only in a
+   panel: a card is a grid and already has a gap, and adding a margin there would double it. */
+.panel p + p {
+  margin-top: 10px;
+}
+
+/* ---------- definition rows ---------- */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.rows > div {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  gap: 4px 24px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.rows > div:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.rows dt {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+  padding-top: 3px;
+}
+
+/* The same rule `.probe-record dd` carries, for the same reason: what goes in a definition value
+   here is an email address, a domain or an identifier, and to the line breaker that is one token.
+   `jordan.sample@example.com` measures 209 points inside a 158-point cell, which put six points of
+   horizontal scroll on a list page between 880 and 919 - the band where `.grid.two` has just found
+   room for its second column and the value column is at its narrowest. */
+.rows dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .rows > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- tags ---------- */
+
+.tag {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  display: inline-block;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line);
+}
+
+.tag.ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+  border-color: transparent;
+}
+
+.tag.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-color: transparent;
+}
+
+.tag.stop {
+  background: var(--stop-soft);
+  color: var(--stop);
+  border-color: transparent;
+}
+
+.tag.accent {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.fine {
+  color: var(--muted);
+  font-size: 0.87rem;
+  max-width: 68ch;
+}
+
+.big {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: -0.01em;
+  display: block;
+}
+
+/* ---------- tables ---------- */
+
+.table-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow-x: auto;
+  box-shadow: var(--shadow);
+}
+
+/* Two ways to ask for the same table: the class, and simply being the table inside a
+   `.table-wrap`. Only the two oldest pages pass the class; every table added since - the whole
+   facility, list, role and A-Z directory - is a bare `<table>` in a wrap, and was rendering
+   with no padding, no rules and no header row. The wrap exists for nothing else, so it can
+   carry the styling itself. */
+table.data,
+.table-wrap > table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.93rem;
+}
+
+table.data th,
+table.data td,
+.table-wrap > table th,
+.table-wrap > table td {
+  text-align: left;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+
+/* The header row wraps, which is where a data table's width mostly came from.
+ *
+ * These labels are uppercase mono at 0.1em of tracking, so a three-word one is wide - and it was
+ * `nowrap`, which made the header the widest thing in its column even where the data under it was
+ * two digits. Measured at 390px: "With named leadership" on /lists held a column at 165px over a
+ * column of "100%"; "How it is counted" on /app/billing at 161px over "per reveal"; "What they are
+ * looking for" on /ehr-data at 224px. Letting them break took /lists from 538px of min-content to
+ * 322, /ehr-data from 476 to 305 and /app/billing from 443 to 316 - which is the difference between
+ * a table that scrolls sideways on a phone and one that does not.
+ *
+ * Nothing is lost by it: a label is a label, and one that reads over two lines is still a label.
+ * `text-wrap: balance` is what stops "With named leadership" breaking as three words and one. */
+table.data th,
+.table-wrap > table th {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  background: var(--surface-2);
+  text-wrap: balance;
+}
+
+/* The escape hatch, and the counterpart to `.wrap-cell` on the panel tables.
+ *
+ * The two table kinds have opposite defaults on purpose. A panel table is a picture of software at
+ * a fixed size, so it holds every cell on one line and `.wrap-cell` is how a specialty is allowed
+ * to be a sentence. A data table on a page is read, so it wraps, and this is how a value that must
+ * not be broken says so: a timestamp ("2026-09-23 14:05" breaks after the date), an NPI, a phone
+ * number, a currency figure. Anything that is prose - a name, an organisation, a specialty, a
+ * location, an API path - is not on this list and wraps with everything else. */
+table.data .nowrap-cell,
+.table-wrap > table .nowrap-cell {
+  white-space: nowrap;
+}
+
+/* An API path or a header name in a table cell is one unbreakable token as far as wrapping is
+   concerned - `GET /v1/organizations/{npi}/profile` measured 254px inside a 350px page - so in a
+   cell, and only in a cell, it is allowed to break. */
+table.data td code,
+.table-wrap > table td code {
+  overflow-wrap: anywhere;
+}
+
+table.data tbody tr:last-child td,
+.table-wrap > table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+table.data tbody tr:hover td,
+.table-wrap > table tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+table.data td a,
+.table-wrap > table td a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+table.data td a:hover,
+.table-wrap > table td a:hover {
+  text-decoration: underline;
+}
+
+.locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.locked::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  border-top-left-radius: 5px;
+  border-top-right-radius: 5px;
+  opacity: 0.7;
+}
+
+/* ---------- forms ---------- */
+
+.filters {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
+  align-items: end;
+}
+
+/* `min-width: 0` because a `<select>` is as wide as its widest option, and a grid item's automatic
+   minimum size is content-based: the role select on /app/team measured 320px of min-content inside
+   a 230px panel column, which the track then had to honour. The control is `width: 100%`, so the
+   option list has no business setting the column's floor. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form .field input {
+  padding: 11px 13px;
+}
+
+.auth {
+  max-width: 440px;
+  margin-inline: auto;
+  padding-block: clamp(40px, 8vw, 80px);
+}
+
+.auth .panel {
+  padding: 28px;
+}
+
+.auth h1 {
+  font-size: 1.7rem;
+}
+
+.notice {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-ink);
+  background: var(--surface-2);
+  border-radius: 9px;
+  padding: 13px 15px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.notice.warn {
+  border-left-color: var(--warn);
+}
+
+.notice.stop {
+  border-left-color: var(--stop);
+}
+
+/* ---------- results meta / pagination ---------- */
+
+.results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 22px 0 12px;
+}
+
+.pager {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* ---------- pricing ---------- */
+
+.plans {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: stretch;
+}
+
+.plan {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in srgb, var(--sea) 60%, transparent),
+        transparent
+      )
+      top / 100% 1px no-repeat,
+    var(--surface);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* The recommended plan is ringed in violet rather than citron: the thing to press on a plan card
+   is the button inside it, and two citron things on one card would be two primary actions. */
+.plan.featured {
+  border-color: var(--accent-ink);
+  box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow);
+}
+
+.plan .price {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 1.9rem;
+  letter-spacing: -0.012em;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.93rem;
+}
+
+.plan ul li::before {
+  content: "—";
+  color: var(--accent-ink);
+  margin-right: 8px;
+}
+
+.plan .btn {
+  margin-top: auto;
+}
+
+/* Five tiers rather than three. The generic `.plans` grid asks for 260px a column, which puts the
+   fifth card alone on a second row at every desktop width; 196px fits all five inside the 1120px
+   wrap (5 x 196 + 4 x 14 = 1036) and `auto-fit` then falls to four, three, two and one column on
+   its own as the viewport narrows. At 320px the wrap is 280px wide, one track, and the cards stack
+   - so a five-column price table never has to scroll sideways, because it is never a table. */
+.plans.tiers {
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 14px;
+}
+
+.plans.tiers .plan {
+  padding: 20px;
+  gap: 12px;
+}
+
+/* 1.9rem of tabular display type does not fit `from $1,500` in a 196px column. */
+.plans.tiers .plan .price {
+  font-size: 1.5rem;
+}
+
+.plans.tiers .plan ul {
+  font-size: 0.87rem;
+}
+
+/* Below the last wrap point the cards are full width again, so they can have their room back. */
+@media (max-width: 560px) {
+  .plans.tiers .plan {
+    padding: 24px;
+  }
+
+  .plans.tiers .plan .price {
+    font-size: 1.8rem;
+  }
+}
+
+/* ---------- prose ---------- */
+
+.prose {
+  max-width: 72ch;
+}
+
+.prose h2 {
+  font-size: 1.35rem;
+  margin: 40px 0 12px;
+}
+
+.prose h3 {
+  margin: 24px 0 8px;
+}
+
+.prose p,
+.prose li {
+  color: var(--ink);
+}
+
+.prose p + p {
+  margin-top: 12px;
+}
+
+.prose ul {
+  padding-left: 20px;
+  margin: 10px 0;
+}
+
+.prose pre {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.prose table.data {
+  margin: 12px 0 20px;
+}
+
+/* An endpoint is one token as far as line breaking is concerned, and the API reference puts one in
+   every third heading: `GET /api/v1/directory/{providers|organizations}` measures 403px, which was
+   the last horizontal scrollbar left on the site at 320px and at 390px. It may break. Only in
+   prose, and only when it does not fit - `anywhere` rather than `break-word` because the narrow
+   case is a heading whose entire content is the token, and `break-word` does not lower the
+   min-content width that the page is being sized by. */
+.prose code {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- breadcrumb ---------- */
+
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.crumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.crumbs a:hover {
+  color: var(--ink);
+}
+
+.crumbs li + li::before {
+  content: "/";
+  margin-right: 6px;
+  opacity: 0.5;
+}
+
+/* ---------- faq ---------- */
+
+.faq {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.faq details {
+  border-bottom: 1px solid var(--line-soft);
+  padding: 14px 0;
+  /* A question can be linked to from elsewhere on its own page, and the header is sticky, so a
+     jump that landed exactly on the summary landed it under the bar. */
+  scroll-margin-top: calc(var(--nav-h) + 16px);
+}
+
+.faq summary {
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.faq summary:hover {
+  color: var(--accent-ink);
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: "+";
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+}
+
+.faq details[open] summary::after {
+  content: "−";
+}
+
+.faq details p {
+  color: var(--muted);
+  margin-top: 8px;
+  max-width: 70ch;
+}
+
+/* ---------- cta ---------- */
+
+/* The closing band. It is the hero's ground again, at the other end of the page: the same colour
+   fields, the same grain, the same citron primary - which is what makes the page read as one
+   object rather than as a stack of sections. It stands on ink in both schemes. */
+.cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(900px 480px at 6% -30%, rgba(11, 95, 165, 0.75), transparent 66%),
+    radial-gradient(620px 420px at 58% 4%, rgba(31, 120, 180, 0.3), transparent 70%),
+    radial-gradient(900px 460px at 94% 124%, rgba(67, 205, 242, 0.2), transparent 64%),
+    var(--ink-ground);
+  padding: clamp(30px, 5vw, 58px);
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+
+.cta::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.5;
+  background-image: var(--grain), linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 160px 160px, 74px 74px, 74px 74px;
+  mask-image: linear-gradient(to bottom, #000 2%, rgba(0, 0, 0, 0.3) 55%, transparent 90%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 2%, rgba(0, 0, 0, 0.3) 55%, transparent 90%);
+  pointer-events: none;
+}
+
+.cta h2 {
+  max-width: 24ch;
+  font-size: clamp(1.7rem, 3.6vw, 2.9rem);
+  letter-spacing: -0.012em;
+}
+
+/* A row of actions. Declared on its own rather than only inside `.cta`, because a section that
+   ends in two buttons wants the same row.
+ *
+ * This is the row every page should use for a pair of buttons under a lede; the ten pages that
+ * reached for `.nav-actions` instead were reaching for this. It wraps, which `.nav-actions` must
+ * not - the header bar has to stay one line at every width. */
+.actions,
+.cta .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Two rules that make the row survive a 320px phone, where `.btn`'s `nowrap` cannot.
+ *
+ * The row wraps before an item shrinks, so a pair of buttons goes onto two lines rather than being
+ * squeezed - that is flexbox's own order of operations and it is the behaviour wanted. What it does
+ * not cover is a single label longer than the line: "Why this rather than the alternatives" on
+ * /about measures 332px, so at 320px it hung 52px off the right of the page no matter how the row
+ * broke. `max-width: 100%` keeps it inside the column and `white-space: normal` lets it use the
+ * second line it now has. Neither changes anything at a width where the label already fits, because
+ * normal wrapping only wraps what does not. */
+.actions > .btn {
+  max-width: 100%;
+  white-space: normal;
+  /* The button already centres its line box; this centres the second line against the first. */
+  text-align: center;
+}
+
+/* The prompt that closes a section needs air above it when it follows a grid of cards. Inside a
+   `.showcase-copy` the grid's own gap has already provided it. */
+.section .prompt-row {
+  margin-top: clamp(24px, 3vw, 36px);
+}
+
+.showcase-copy .prompt-row {
+  margin-top: 0;
+}
+
+/* ---------- footer ---------- */
+
+/* The footer carries the system's ground. It is the same ink in both schemes, for the same
+   reason the heroes are: it is the page's floor, and a floor that flipped to white under a dark
+   hero would make every page look like two documents stapled together. */
+.footer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  padding-block: clamp(44px, 6vw, 68px) 30px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  background: radial-gradient(1100px 420px at 12% -40%, rgba(11, 95, 165, 0.4), transparent 68%),
+    radial-gradient(900px 380px at 88% 130%, rgba(67, 205, 242, 0.1), transparent 66%),
+    var(--ink-ground);
+}
+
+.footer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.45;
+  background-image: var(--grain);
+  background-size: 160px 160px;
+  pointer-events: none;
+}
+
+.footer .footer-head + p {
+  line-height: 1.6;
+}
+
+/* The brand column: the mark, the one sentence the site leads with, and the one action. */
+.footer-brand {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}
+
+.footer-brand p {
+  max-width: 34ch;
+  line-height: 1.6;
+}
+
+.footer-brand .brand {
+  font-size: 1.02rem;
+}
+
+/* The brand column keeps its double width; the link columns fit as many across as there is room
+   for. The footer has grown from four columns to seven - product, professions, help, account,
+   legal, machine-readable - and a fixed count leaves the last one stranded on a row of its own. */
+.footer .cols {
+  display: grid;
+  gap: 24px 20px;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  align-items: start;
+}
+
+/* The brand keeps its double width. An auto-fit repeat cannot sit beside an `fr` track, so the
+   first column takes its extra width by spanning instead of by being declared wider. */
+.footer .cols > :first-child {
+  grid-column: span 2;
+}
+
+/* The seven column headings in the footer. They were `h4` under pages whose last heading is an
+   `h1` or an `h2`, which is a skipped level on every page of the site; they are sections of the
+   footer landmark, so `h2` is what they are, and the class carries the look that the tag used to.
+   Nothing about them changes on screen. */
+.footer .footer-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--ink);
+}
+
+.footer .legal {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+/* Shown only when the browser sent Sec-GPC: see components/SiteFooter.tsx and lib/gpc.ts. */
+.footer .footer-gpc {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ok);
+  border-radius: 8px;
+  background: var(--ok-soft);
+  color: var(--ink);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 760px) {
+  .footer .cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+/* --- the signed-in shell ---------------------------------------------------------------
+   Deliberately quieter than the marketing pages: a working surface, not a pitch. The bar is
+   the one piece of chrome, and it carries the only two things somebody needs from every
+   screen - which organisation they are in, and the way out. */
+/* The signed-in application is not a page of the marketing site with a second bar on it.
+ *
+ * The root layout puts the site header above and the site footer below every route, which is right
+ * for every route except these. A signed-in customer was getting two sticky headers at `top: 0`
+ * fighting for the same eight pixels, and seven offers to sign in or start free - four in the site
+ * header and its phone menu, three in the footer - on a page they had signed in to reach.
+ *
+ * Hidden in the stylesheet rather than not rendered, because the alternative is for the root layout
+ * to read the request to find out which route it is on, and that would make the site's every
+ * prerendered page dynamic to fix a signed-in one. `display: none` takes it out of the
+ * accessibility tree as well as off the screen, so a screen reader is not offered the sign-in link
+ * either, and `:has()` asks the one question that decides it: is this page the application. */
+body:has(.app-shell) .nav,
+body:has(.app-shell) .signed-out-only {
+  display: none;
+}
+
+/* The bar, on the ink ground the rest of the product uses.
+ *
+ * It is the one element on every signed-in page, so it is the cheapest place to make the app
+ * belong to the product rather than resemble a dashboard template. The ground is the same
+ * `--ink-ground` the marketing nav sits on and is identical in both schemes, which is exactly
+ * why the tokens were built that way - citron needs somewhere to live that does not flip.
+ */
+.app-bar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(10, 6, 22, 0.97), rgba(10, 6, 22, 0.92));
+  backdrop-filter: saturate(150%) blur(14px);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+/* On the ink ground every colour in the bar comes from the on-ink pair, in both schemes. The
+   light-scheme `--ink` would be near-black on near-black. */
+.app-bar .brand {
+  color: var(--on-ink);
+}
+
+.app-shell .app-nav a,
+.app-shell .app-bar .app-acct > summary {
+  color: var(--on-ink-muted);
+}
+
+.app-shell .app-nav a:hover,
+.app-shell .app-bar .app-acct > summary:hover,
+.app-shell .app-bar .app-acct[open] > summary {
+  color: var(--on-ink);
+}
+
+/* Two rules fight over this summary, and both were written on purpose.
+ *
+ * `.app-shell details:not(.report-problem) > summary` gives every disclosure in the app its ink
+ * colour and its `+` / `−` marker. That is right for a filter group on a white panel and wrong
+ * twice over here: the ink is the light scheme's near-black, which on the ink ground measured a
+ * contrast ratio of 1.06 - invisible - and the `+` landed beside this menu's own `▾`, so the bar
+ * read "+ Account ▾".
+ *
+ * Specificity rather than ordering, so this holds wherever the rules end up in the file: three
+ * classes beats two classes and two elements.
+ */
+.app-shell .app-bar .app-acct > summary::before {
+  content: none;
+}
+
+/* Citron is the product's "this one" colour, and it is wasted on a bar where nothing is current.
+   The underline rather than a fill: a nav of eleven items with one filled pill reads as a button
+   somebody forgot to press. */
+.app-shell .app-nav a[aria-current="page"] {
+  color: var(--signal);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+}
+
+.app-shell .app-who .fine {
+  color: var(--on-ink-muted);
+}
+
+/* The sign-out button on the ink ground: a hairline of white rather than the light scheme's
+   border, which disappears into it. */
+.app-shell .app-who .btn {
+  color: var(--on-ink);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app-shell .app-who .btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* The account panel hangs off a dark bar, so it gets the dark surface rather than the scheme's -
+   a white card on a black bar is the two-surfaces problem the public menu already solved. */
+.app-shell .app-acct-panel {
+  background: var(--ink-ground-2);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.app-shell .app-acct-panel a {
+  color: var(--on-ink-muted);
+}
+
+.app-shell .app-acct-panel a:hover {
+  color: var(--signal);
+}
+
+.app-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 58px;
+  flex-wrap: wrap;
+  padding-block: 8px;
+}
+
+.app-nav {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.app-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.app-nav a:hover {
+  color: var(--ink);
+}
+
+/* The account group in the signed-in bar.
+ *
+ * Absolutely positioned rather than in flow: a panel that pushed the bar taller when opened would
+ * move the page under the reader's cursor, which is the thing a menu must not do. */
+.app-acct {
+  position: relative;
+}
+
+.app-acct > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.app-acct > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-acct > summary::after {
+  content: " ▾";
+}
+
+.app-acct > summary:hover,
+.app-acct[open] > summary {
+  color: var(--ink);
+}
+
+.app-acct > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.app-acct-panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 12px);
+  /* Above the search screen's sticky results bar, which is the only other raised thing here. */
+  z-index: 40;
+  display: grid;
+  gap: 11px;
+  min-width: 11rem;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+}
+
+/* Near the right edge the panel would otherwise run off; anchor it to the right instead. */
+@media (max-width: 760px) {
+  .app-acct-panel {
+    left: auto;
+    right: 0;
+  }
+}
+
+.app-who {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* A disclosure inside the application.
+ *
+ * The site already styles one - `.faq summary` - and the application has four that were left as the
+ * browser drew them: a grey triangle, a text cursor, and no hit area. "Export these providers" on
+ * /app/alerts, and the Medicare filters, "Save as alert" and the column picker on /app/search.
+ *
+ * `.report-problem` is excluded, and that is the interesting part: it is a disclosure too, but it
+ * is deliberately a quiet underlined link rather than a section anybody is meant to open, and it
+ * appears on public pages as well. A rule that made it match the rest would have made the two
+ * disagree depending on which side of sign-in you were reading it from. */
+.app-shell details:not(.report-problem) > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 9px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.app-shell details:not(.report-problem) > summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-shell details:not(.report-problem) > summary::before {
+  content: "+";
+  font-family: var(--font-mono), monospace;
+  font-size: 0.86rem;
+  line-height: 1;
+  color: var(--accent-ink);
+  width: 1ch;
+  flex: none;
+}
+
+.app-shell details:not(.report-problem)[open] > summary::before {
+  /* A minus, written as the character rather than as an escape. It was a control byte and a "2",
+     so every open disclosure in the signed-in app showed a 2 where the minus belongs: the filter
+     groups in the search rail, the export panel, the alert panel. An escape that passed through a
+     script writing this file got eaten, which is the same accident that produced the one a few rules
+     above. `.faq details[open] summary::after` has had the character literal all along and is
+     right; this now matches it. */
+  content: "−";
+}
+
+.app-shell details:not(.report-problem) > summary:hover {
+  color: var(--accent-ink);
+}
+
+/* An empty table says so in the table rather than beside it.
+ *
+ * A sentence dropped into a `colspan` cell inherited the row padding and sat hard against the
+ * header rule at body size, which reads as a row of data that happens to be a sentence. This gives
+ * it the air an empty state needs and sets it as the aside it is. */
+table .table-empty {
+  padding-block: clamp(22px, 4vw, 34px);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------------------
+   The signed-in app: its own scale and its own rhythm.
+
+   The site's h1 is clamp(2.25rem, 5.4vw, 3.9rem) - a size that earns its place over a hero and
+   shouts on a page of results. Eight app pages had each written an override inline to escape it,
+   and one of the eight used a different clamp from the other seven. That is how a type scale
+   drifts: not by a decision, but by repetition, each page solving the same problem slightly
+   differently and none of them writing it down.
+
+   So the app states its own scale once, here, and the pages stop carrying it. Three sizes rather
+   than six, because a page of panels and tables has three levels in it: the page, the panel, and
+   the group inside the panel.
+
+   Density is the other half. Reading a table of providers is scanning, not reading prose: the
+   row rhythm wants to be tight enough that a screenful is a useful number of rows, and the panel
+   padding wants to stop being hero padding. These numbers are the whole of it, in one place,
+   rather than a margin written at each call site.
+   --------------------------------------------------------------------------------------- */
+
+.app-shell {
+  /* The two numbers every app surface spaces itself by. Named so a panel, a table and a header
+     cannot drift apart the way the type did. */
+  --app-gap: 18px;
+  --app-pad: 20px;
+}
+
+/* The app uses the screen; the marketing pages use a measure.
+ *
+ * `.wrap` is capped at 1120px, which is right for running prose and wrong for an application.
+ * The search screen is a 290px filter rail plus a five-column table: inside 1120px the table got
+ * about 810px and scrolled inside its own container while the rest of a 1440 or 1920 monitor sat
+ * empty. "It does not fit the screen" was exactly right - it was fitting a width chosen for text.
+ *
+ * Wider, but still bounded: a table wants room, and nothing wants to be 1920px of anything.
+ */
+.app-shell .wrap {
+  max-width: 1480px;
+}
+
+/* The measure comes back where there is actually prose. A paragraph set across 1480px is about
+   180 characters a line, which is unreadable - so the page is wide and the writing is not. */
+.app-shell .panel p,
+.app-shell .panel li,
+.app-shell .ps-note {
+  max-width: 78ch;
+}
+
+.app-shell h1 {
+  font-size: clamp(1.55rem, 2.6vw, 2rem);
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+.app-shell h2 {
+  font-size: 1.12rem;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.app-shell h3 {
+  font-size: 0.94rem;
+  letter-spacing: 0;
+  margin-top: 16px;
+}
+
+/* The page's own lede sits under a 2rem heading now, not a 3.9rem one, so it stops competing. */
+.app-shell .lede {
+  font-size: 1rem;
+  max-width: 68ch;
+}
+
+.app-shell .panel {
+  padding: var(--app-pad);
+}
+
+.app-shell .panel + .panel {
+  margin-top: var(--app-gap);
+}
+
+.app-shell .panel h2 {
+  margin-bottom: 10px;
+}
+
+/* Table rhythm: scanning, not reading. Tighter rows mean a screenful is a useful number of them,
+   which is the whole point of a results table. */
+.app-shell .ps-tw th {
+  padding: 8px 14px;
+}
+
+.app-shell .ps-tw td {
+  padding: 10px 14px;
+}
+
+/* ---------------------------------------------------------------------------------------
+   The row, and what a card is for.
+
+   A results row holds one thing somebody is scanning for and four they read once they have found
+   it. The name had no rule of its own at all, so it rendered as a default hyperlink - the same
+   weight, colour and underline as "Report a problem" three cells over. Every row was five things
+   of equal loudness and the eye had nowhere to land. This gives the name the weight and takes the
+   link styling off it: in a dense table the primary content should not look like a link, it
+   should look like the content, and reveal itself on hover.
+
+   The cards are the other half. Border, radius, fill and shadow each say "this is a separate
+   object", and the app put all four on every panel - so eleven stacked panels each claimed to be
+   lifted above the others and the result is a texture rather than a hierarchy. The lift now marks
+   the one object on the page that is the point: the results themselves. Panels keep the hairline
+   and the radius, which is enough to say "separate", and sit flat on the page's own wash.
+   --------------------------------------------------------------------------------------- */
+
+/* ---- the name ---- */
+/* The cell holds one link now: the name, pointing at the record. It used to hold a second - "Open
+   the record", under the NPI - and these rules carried `:not(.ps-bills)` to keep away from it,
+   because without the guard the secondary link inherited the name's ink, measured at
+   rgb(21, 11, 44) where it should have been the muted rgb(87, 74, 110). Worth knowing if a second
+   link is ever added back to this cell: style it by its own class, and exclude it here. */
+.app-shell .ps-who > a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.app-shell .ps-who > a b {
+  font-size: 1.01rem;
+  font-weight: 640;
+  letter-spacing: -0.012em;
+}
+
+.app-shell .ps-who > a:hover {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app-shell .ps-who > a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+
+/* ---- what a card is for ---- */
+.app-shell .panel {
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* The exception, and the reason the rule exists: the results are the object the page is about,
+   so they are the thing allowed to sit above it. */
+.app-shell .ps-results {
+  box-shadow: var(--shadow);
+}
+
+/* The strip above a table carries counts and controls, not prose. It matches the table's rhythm
+   rather than the panel's. */
+.app-shell .ps-rhead {
+  padding: 10px 14px;
+}
+
+/* A row the pointer is on. `--surface-2` is the token the table hover already used; what was
+   missing is a reason to look at a row at all, which is the name above. */
+.app-shell .ps-tw tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+.app-main {
+  padding-block: clamp(22px, 3vw, 36px);
+}
+
+/* The faintest wash of the brand violet behind the panels, so the page is a surface rather than
+   the absence of one. `--grid` is the token the marketing pages already use for this, at the
+   strength they already chose; the app reads it rather than inventing a second value. */
+.app-shell {
+  background-image: linear-gradient(180deg, var(--accent-glow) 0%, transparent 420px);
+  background-repeat: no-repeat;
+}
+
+/* The small capitalised line above a page's heading. The marketing pages use it everywhere and
+   the app used it on two screens; it is what tells somebody which of eleven pages they are on
+   before they read the heading. */
+.app-shell .eyebrow {
+  color: var(--accent-ink);
+}
+
+/* A quota bar. Unlimited plans get no bar at all rather than a full one, because a full bar
+   reads as "you are out" at a glance and that is the opposite of what null means here. */
+.meter {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+  margin-top: 8px;
+  max-width: 260px;
+}
+
+.meter i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-ink), var(--sea));
+}
+
+.ticks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.ticks li {
+  display: flex;
+  gap: 9px;
+}
+
+.ticks li::before {
+  /* An arrow, written as the character rather than as a CSS escape. It shipped as the
+     escape for it, lost the backslash on the way in, and every item in these lists read 92. */
+  content: "→";
+  color: var(--accent-ink);
+  flex: none;
+}
+
+/* ---------- a link, and what is behind it ----------
+ *
+ * The `.ticks` list above is for one phrase per row. Several lists on the site are not that: they
+ * are a link and then a sentence describing where it goes, and they were written as
+ * `<a>Providers A-Z</a>: physicians, nurses, ...` inside an `li`. Set as one run of inline text
+ * that is exactly what it does - the link broke across two lines mid-name, the colon that followed
+ * it hung in the middle of a line with space either side, and the sentence started in a different
+ * place on every row. It is a description list pretending to be a sentence.
+ *
+ * So it is written as one now: a `dl` of bare `dt`/`dd` pairs, the term in its own column and the
+ * description in the next, and the colon gone because the structure now says what the colon was
+ * saying. The arrow moves to the `dt`, so the rows still read as the same family of list.
+ *
+ * The `dl` itself is the grid, rather than a row of little grids one per pair. That is what makes
+ * the term column `max-content` mean anything: a column is shared by every row of one grid, so it
+ * comes out exactly as wide as the longest name in that list - no name wraps, no list gives away
+ * more room than its names need, and every description in the list starts in the same place, which
+ * is the thing the inline version could not do at all. Below 620px there is no room for two
+ * columns inside a panel, so the description goes under its term: the same reading order, and
+ * still no hanging punctuation.
+ */
+.deflist {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  /* No column gap: the gutter is padding on the term instead, so that the hairline between two
+     pairs runs the width of the list rather than breaking in two over the gap. */
+  column-gap: 0;
+  align-items: baseline;
+}
+
+.deflist dt,
+.deflist dd {
+  margin: 0;
+  padding: 9px 0;
+  border-top: 1px solid var(--line-soft);
+  /* The value half of a definition list is where a domain or an address lands, and the column is
+     `minmax(0, 1fr)` - free to shrink, but only if its content can break. */
+  overflow-wrap: anywhere;
+}
+
+/* The first pair: no rule above it, because whatever introduces the list is already above it. */
+.deflist > :nth-child(-n + 2) {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.deflist dt {
+  display: flex;
+  gap: 9px;
+  padding-right: 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  /* The name is the row's handle. It may wrap if a term is ever long enough to need it, but it is
+     never hyphenated into something that is no longer the link's wording. */
+  hyphens: none;
+}
+
+.deflist dt::before {
+  content: "→";
+  color: var(--accent-ink);
+  flex: none;
+}
+
+.deflist dd {
+  color: var(--muted);
+  font-size: 0.9rem;
+  max-width: 68ch;
+}
+
+@media (max-width: 620px) {
+  .deflist {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked, the hairline belongs to the term: it opens the pair rather than splitting it. The
+     description is indented to the term's text rather than to its arrow. */
+  .deflist dd {
+    border-top: 0;
+    padding-top: 0;
+    padding-left: 18px;
+  }
+}
+
+.notice.ok {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  color: var(--ink);
+}
+
+
+/* Revealed contact points, inside a results cell: a list rather than a paragraph, because the
+   values are scanned and copied rather than read. */
+.contact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.contact-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.88rem;
+}
+
+.contact-list .mono {
+  word-break: break-all;
+}
+
+/* "Report a problem" beside a record. A closed <details> has to cost one quiet line in a table
+   cell - it is an offer, not a call to action - so the summary reads as a link, and only the open
+   form gets a rule and room. */
+.report-problem > summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  width: fit-content;
+}
+
+.report-problem[open] {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 10px;
+}
+
+/* A spent allowance disables the button rather than hiding it: the customer should see that the
+   action exists and why it is unavailable, not wonder where it went. */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* A secret or a one-time link: monospace, wrapping, and visibly a thing to copy rather than
+   read. Wide enough to select in one gesture on a phone. */
+.secret {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.85rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  user-select: all;
+}
+
+/* Scope checkboxes: the label carries the reason a scope is unavailable, so the row has to have
+   room for two lines rather than being a tight list. */
+.scopes {
+  border: 0;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scopes label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.92rem;
+}
+
+.scopes label.unavailable {
+  opacity: 0.55;
+}
+
+.scopes input {
+  margin-top: 3px;
+}
+
+
+/* An allowance close to spent should look different before it refuses, not after. */
+/* Three states, because two were not enough to tell the truth. A bar at 85% is a warning; a bar at
+   or past its allowance is not a warning, it is a stop - the next reveal, row or call is refused.
+   Drawing "140 of 25" as a full bar in the action colour, which is what the overview did, says the
+   account is in good order at the exact moment it is not. */
+.meter.warn i {
+  background: var(--warn);
+}
+
+.meter.stop i {
+  background: var(--stop);
+}
+
+/* ---------- legal pages and the removal form ---------- */
+
+.field textarea {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+}
+
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.scopes legend {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+/* A counsel's note in a draft. Rendered as nothing once LEGAL_PAGES_APPROVED is on. */
+.lawyer-note {
+  background: var(--surface-2);
+  color: var(--warn);
+  border: 1px dashed var(--warn);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 0.9em;
+}
+
+/* A question for the owner on a company page. It has no switch of its own: the note disappears
+   when the fact behind it is answered in src/content/company.ts. Styled as a counsel's note
+   because it is the same device, and the owner has already read one set of them. */
+.owner-note {
+  background: var(--surface-2);
+  color: var(--warn);
+  border: 1px dashed var(--warn);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 0.9em;
+}
+
+.legal-approved {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: var(--muted);
+}
+
+/* The section titles carry their own numbers ("1. Who we are"), and the Part headings carry none,
+   so the list's own numbering only doubled them ("1. 1.") and numbered the Parts. */
+.legal-toc ol {
+  columns: 2 240px;
+  margin: 24px 0 8px;
+  padding-left: 0;
+  list-style: none;
+  font-size: 0.92rem;
+}
+
+.legal-toc a {
+  color: var(--muted);
+}
+
+.remove-layout {
+  display: grid;
+  gap: 32px;
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: clamp(32px, 6vw, 64px);
+}
+
+@media (min-width: 900px) {
+  .remove-layout {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+
+/* The sign-up agreement box: a checkbox beside a sentence, not a full-width input. */
+.check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.check input {
+  margin-top: 3px;
+  width: auto;
+}
+
+/* Anchored headings clear the sticky header when reached from the contents list. */
+.prose section[id] {
+  scroll-margin-top: 88px;
+}
+
+/* The first-run checklist. A numbered list because the order is the advice, with the state of
+   each line to the left of it rather than as a colour - the state has to survive being read
+   aloud, and "to do" is a word where a grey tick is not. */
+.checklist {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checklist li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.checklist li:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.checklist li .tag {
+  flex: none;
+  min-width: 52px;
+  text-align: center;
+}
+
+.checklist li.done .checklist-body b {
+  color: var(--muted);
+}
+
+.checklist-body {
+  min-width: 0;
+}
+
+/* ---------- owner dashboard ---------- */
+
+/* The business dashboard (/app/owner), internal accounts only. Everything here is built on the
+   tokens already defined above, so the charts and the "not available" states carry over to the
+   dark theme without a second palette. */
+
+/* Wider cells than the marketing stat strip: every tile here carries what it counts and its
+   window underneath, and 160px columns squeeze that into a ladder of two-word lines. */
+/* Three across, and every row on this page holds six, so there is never a half-empty row -
+   an empty cell in this grid shows the container's border colour and reads as a missing tile. */
+.stats.owner {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 880px) {
+  .stats.owner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .stats.owner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.owner-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-top: clamp(20px, 3vw, 32px);
+  margin-bottom: 28px;
+}
+
+/* What a figure counts and over what window, under the figure. Small, but never hidden: a
+   number without its window is a number nobody can act on. */
+/* The sentence under a figure. It resets the label styling around it - and `font-family` is part
+   of that, which is what was missing: in a stat tile the note inherits the body face and reads
+   correctly, but in a table header it inherited the header's mono and every row description on the
+   business dashboard was a paragraph of monospace. Mono is for a counted thing, never a sentence. */
+.tile-note {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-body), system-ui, sans-serif;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  max-width: 46ch;
+}
+
+/* "Not available" where a number would be. Deliberately not the big display face: it must not
+   be mistakable for a figure at a glance, and it must not look like a zero. */
+.stat .value.unknown,
+.queue .count.unknown {
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--warn);
+}
+
+.trend {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+}
+
+.trend.up {
+  color: var(--ok);
+}
+
+.trend.down {
+  color: var(--stop);
+}
+
+.trend.flat,
+.trend.none {
+  color: var(--muted);
+}
+
+/* Hand-drawn SVG: sized by its viewBox, coloured by the theme's own properties. */
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart .bar {
+  fill: var(--accent-ink);
+}
+
+.chart .line {
+  fill: none;
+  stroke: var(--accent-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart .area {
+  fill: var(--accent-glow);
+}
+
+.chart .axis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart .gridline {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+
+.chart .chart-label {
+  fill: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+}
+
+.spark-row {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) minmax(0, 130px);
+  gap: 4px 16px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.spark-row:first-child {
+  border-top: 0;
+}
+
+@media (max-width: 560px) {
+  .spark-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .spark-row .spark {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* The consumption table's labels carry their own definition underneath, and the shared table
+   style keeps every `th` on one line - which stretched that sentence into a row several
+   thousand pixels wide. Here, and only here, a header cell wraps. */
+.table-wrap > table.owner-table th {
+  white-space: normal;
+}
+
+.table-wrap > table.owner-table tbody th {
+  width: 30%;
+  min-width: 190px;
+}
+
+@media (max-width: 560px) {
+  .table-wrap > table.owner-table tbody th {
+    min-width: 140px;
+  }
+}
+
+.queue-list {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+}
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.queue .count {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 1.7rem;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.queue .statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+
+/* ==========================================================================================
+   Product surfaces
+   ==========================================================================================
+
+   The panels that show the software rather than describing it. Each one is framed like a window -
+   a title bar, the path it lives at, a state chip - and filled from the API by the component that
+   renders it (`components/ProductPanels.tsx`). They are text and tables, not pictures of tables,
+   so everything in them is selectable, searchable and readable by a screen reader, and none of
+   them contains a form control: a select nobody can submit is a trap for anyone arriving by
+   keyboard.
+
+   Every one of these classes is built on the tokens above and nothing else, so a window drops
+   onto a light reading surface or onto the ink ground and takes its colour from where it landed.
+   ========================================================================================== */
+
+.win {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--lift);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* A degree and a half of rotation, and only where there is room for it. It is the difference
+   between a screenshot pasted onto a page and a surface sitting on one. Nothing inside a tilted
+   window is interactive, so no hit target moves under a cursor. */
+@media (min-width: 1040px) and (prefers-reduced-motion: no-preference) {
+  .win.tilt-l {
+    transform: rotate(-1.1deg);
+  }
+
+  .win.tilt-r {
+    transform: rotate(1deg);
+  }
+}
+
+.win-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-2);
+}
+
+.win-dots {
+  display: inline-flex;
+  gap: 5px;
+  flex: none;
+}
+
+.win-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+
+.win-title {
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+  flex: none;
+}
+
+/* The path is the only thing in the bar that may be cut, and it is the only thing in the bar the
+   reader can do without - the title says what the surface is and the chip says it is live. */
+.win-path {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.win-body {
+  padding: 16px 18px;
+}
+
+.win-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  font-size: 0.8rem;
+}
+
+.win-count {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  letter-spacing: 0.01em;
+}
+
+.win-link {
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.win-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Where a panel could not read what it is for. It says so in words rather than printing a zero,
+   which is the rule the whole site is built on. */
+.win-unreach {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin: 4px 0;
+}
+
+/* ---- chips: the small state labels a product surface is made of ------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.chip svg {
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+
+.chip.live {
+  margin-left: auto;
+  color: var(--ok);
+  border-color: transparent;
+  background: var(--ok-soft);
+  text-transform: uppercase;
+}
+
+.chip.live::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.chip.ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: transparent;
+}
+
+.chip.warn {
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-color: transparent;
+}
+
+.chip.lock {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.chip.ghost {
+  background: transparent;
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.chip.filter {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: transparent;
+  letter-spacing: 0.02em;
+}
+
+.win-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+/* ---- the table inside a window ---------------------------------------------------------- */
+
+.win-scroll {
+  overflow-x: auto;
+  margin: 0 -18px -16px;
+  padding: 0 18px 16px;
+}
+
+table.win-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+table.win-table th,
+table.win-table td {
+  text-align: left;
+  padding: 9px 10px 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+table.win-table th:last-child,
+table.win-table td:last-child {
+  padding-right: 0;
+}
+
+/* One cell per row is allowed to wrap - a specialty is a sentence, and holding it on one line was
+   what pushed the panel past its own width and put a scrollbar under the hero. */
+table.win-table .wrap-cell {
+  white-space: normal;
+  min-width: 132px;
+}
+
+/* The NPI, under the name it belongs to. */
+.cell-npi {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+table.win-table thead th {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+table.win-table tbody tr:last-child th,
+table.win-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+table.win-table tbody th {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+table.win-table code {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.cell-name {
+  display: block;
+}
+
+.cell-cred {
+  display: inline-block;
+  margin-left: 6px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* ---- the record panel ------------------------------------------------------------------- */
+
+.rec-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.rec-name {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: -0.008em;
+  color: var(--ink);
+}
+
+.rec-sub {
+  color: var(--muted);
+  font-size: 0.86rem;
+  margin-top: 3px;
+}
+
+.rec-npi {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.rec-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 16px 0 8px;
+}
+
+.rec-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rec-lines li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.86rem;
+}
+
+.rec-lines code {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.rec-kind {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rec-none {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+/* A field that is sold under a contract, drawn in the state it is really in: present, and not
+   openable from a web page. Never a blurred value, because a blurred value is a promise that
+   there is a button somewhere. */
+.rec-bar {
+  display: block;
+  width: 108px;
+  height: 9px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    115deg,
+    var(--line) 0 5px,
+    transparent 5px 10px
+  );
+  border: 1px solid var(--line);
+}
+
+.rec-fine {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.58;
+}
+
+/* ---- the export panel ------------------------------------------------------------------- */
+
+.exp {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+
+@media (max-width: 520px) {
+  .exp {
+    grid-template-columns: 1fr;
+  }
+}
+
+.exp-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 9px;
+}
+
+.exp-group {
+  font-size: 0.74rem;
+  color: var(--muted);
+  margin: 12px 0 5px;
+}
+
+.exp-group:first-of-type {
+  margin-top: 0;
+}
+
+.exp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 0.83rem;
+}
+
+.exp-list li {
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.exp-list li[aria-current] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.exp-note {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+/* ---- coverage bars ---------------------------------------------------------------------- */
+
+/* One live count per specialty, drawn against the largest. The bar is decoration - the number is
+   printed beside it in full-contrast text, so the bar carrying 2.4:1 against its track costs
+   nobody anything. */
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.82rem;
+}
+
+.bar-label {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+
+.bar-fill {
+  display: block;
+  height: 100%;
+  width: var(--w, 0%);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-ink), var(--sea));
+  transform-origin: left center;
+}
+
+.bar-count {
+  font-family: var(--font-mono), monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-size: 0.78rem;
+}
+
+/* A fill-rate list whose labels are field names rather than one-word specialty names.
+   `.bars` squeezes its label into a third of the row, which is right for "Cardiology" and wrong
+   for "More than one practice location" - at 320px that label ellipsises to nothing and the number
+   beside it becomes unreadable. So this variant gives the label its own line with the count, drops
+   the track underneath, and only goes back to one row where there is width for all three. The
+   label may also carry a sentence saying what the field is, which is the other thing `.bars` has
+   no room for. */
+.bars.stacked li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label count"
+    "track track";
+  row-gap: 7px;
+  align-items: start;
+}
+
+.bars.stacked .bar-label {
+  grid-area: label;
+  white-space: normal;
+  overflow: visible;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.bars.stacked .bar-label a {
+  color: var(--accent-ink);
+  text-decoration: none;
+}
+
+.bars.stacked .bar-label a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.bars.stacked .bar-label small {
+  display: block;
+  margin-top: 3px;
+  font-weight: 400;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.bars.stacked .bar-track {
+  grid-area: track;
+}
+
+.bars.stacked .bar-count {
+  grid-area: count;
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+@media (min-width: 720px) {
+  .bars.stacked li {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto;
+    grid-template-areas: "label track count";
+    align-items: center;
+    column-gap: 18px;
+  }
+}
+
+/* ---- a request, framed the same way ----------------------------------------------------- */
+
+.code-win {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: var(--lift);
+}
+
+.code-win pre {
+  margin: 0;
+  padding: 18px;
+  overflow-x: auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.8rem;
+  line-height: 1.62;
+  color: var(--ink);
+}
+
+.code-win .win-foot {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ==========================================================================================
+   Section rhythm
+   ==========================================================================================
+
+   Every section below the fold is the same five moves, in the same order: an eyebrow that names
+   the subject, a claim, a short paragraph, the proof, and one prompt worded for what the section
+   just proved. That is the structure the owner chose, and these classes are what carry it.
+   ========================================================================================== */
+
+/* A section that stands on ink in the middle of a light page. Alternating it with the reading
+   surface is what gives the page its rhythm, and it is the only way citron recurs below the fold
+   without being borrowed for something that is not an action. */
+.section.on-ink {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+}
+
+.section.on-ink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.4;
+  background-image: var(--grain);
+  background-size: 160px 160px;
+  pointer-events: none;
+}
+
+/* The two-column feature: the argument on one side, a product surface on the other, and the sides
+   swap section to section. Named `showcase` rather than `feature` because `.card.feature` already
+   means something else. */
+.showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 52px);
+  align-items: center;
+}
+
+/* Every cell of a showcase may hold a product window, and a window holds a table in a scroll
+   container. Without this the cell is sized by the table's min-content width. */
+.showcase > * {
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .showcase {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+    column-gap: clamp(36px, 5vw, 72px);
+  }
+
+  /* The copy keeps its place in the document; only the painted order swaps, so a screen reader
+     and a keyboard always meet the argument before its proof. */
+  .showcase.flip > :first-child {
+    order: 2;
+  }
+}
+
+.showcase-copy {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  min-width: 0;
+}
+
+.showcase-copy h2 {
+  max-width: 24ch;
+}
+
+.showcase-copy p {
+  color: var(--muted);
+  max-width: 54ch;
+}
+
+/* The one prompt that closes a section, worded for what the section proved rather than as a
+   generic "learn more". Underlined in the accent, never a filled button - a section has at most
+   one citron thing on it and that belongs to the page's primary action. */
+.prompt {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--accent-ink);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-ink) 42%, transparent);
+  padding-bottom: 3px;
+}
+
+.prompt:hover {
+  border-bottom-color: var(--accent-ink);
+}
+
+.prompt .arrow {
+  font-family: var(--font-mono), monospace;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .prompt .arrow {
+    transition: transform 160ms ease;
+  }
+
+  .prompt:hover .arrow {
+    transform: translateX(3px);
+  }
+}
+
+/* ==========================================================================================
+   The live lookup
+   ==========================================================================================
+
+   The field that searches as you type and degrades to a plain form without JavaScript
+   (`components/LiveLookup.tsx`). It is a combobox over a listbox, so every state it has - active
+   option, selected option, the count, the "index did not answer" line - is announced rather than
+   only drawn.
+   ========================================================================================== */
+
+.probe {
+  display: grid;
+  /* Explicit, so the implicit `auto` track cannot take its floor from the form's min-content. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+/* The pill on the home page's lookup section: glyph + input + "Full search", 347px of min-content
+   in a 280px column, and the one thing on the home page that produced an actual scrollbar at
+   320px. Same fix as `.searchbar`, and for the same reason. */
+.probe-form {
+  min-width: 0;
+}
+
+.probe-label {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 9px;
+}
+
+.probe-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 7px 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--lift);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.probe-field:focus-within {
+  border-color: var(--accent);
+}
+
+.probe-glyph {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--muted);
+}
+
+.probe-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 1rem;
+  padding: 6px 0;
+}
+
+.probe-input::placeholder {
+  color: var(--muted);
+}
+
+/* The pill has no border of its own around the input, so the ring sits inside it rather than
+   being clipped by the rounded edge. */
+.probe-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+.probe-hint {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.probe-hint strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.probe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 11px;
+  font-size: 0.78rem;
+}
+
+.probe-chips-label {
+  color: var(--muted);
+}
+
+.probe-chip {
+  font: inherit;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.probe-chip:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+
+.probe-body {
+  display: grid;
+  gap: 14px;
+  /*grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);*/
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .probe-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .probe-body {
+    transition: opacity 180ms ease;
+  }
+
+  .probe-body.is-waiting {
+    opacity: 0.62;
+  }
+}
+
+.probe-hits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.probe-hits-note,
+.probe-hits-none {
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  line-height: 1.5;
+}
+
+.probe-hit {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.probe-hit:hover {
+  background: var(--surface-2);
+}
+
+.probe-hit.is-open {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+.probe-hit.is-active {
+  border-color: var(--accent);
+}
+
+.probe-hit-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: -0.012em;
+}
+
+.probe-hit-meta,
+.probe-hit-npi {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.probe-sheet {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 16px 18px;
+  min-width: 0;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.probe-sheet-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.probe-record {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.probe-record .field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 128px) minmax(0, 1fr);
+  gap: 3px 14px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 0.84rem;
+}
+
+.probe-record .field-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.probe-record dt {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 2px;
+}
+
+.probe-record dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 520px) {
+  .probe-record .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.probe-absent {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* The two fields the product is actually sold on, stated as facts about this row: whether there
+   is a work email, and that home contact is contracted and never self-serve. */
+.probe-record .field-sold {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding-top: 11px;
+}
+
+.probe-pip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 7px;
+  background: var(--line);
+  border: 1px solid var(--muted);
+}
+
+.probe-pip.yes {
+  background: var(--ok);
+  border-color: transparent;
+}
+
+.probe-pip.locked {
+  background: var(--accent-ink);
+  border-color: transparent;
+}
+
+/* ==========================================================================================
+   Entrance
+   ==========================================================================================
+
+   The only client-side motion on a public page (`components/Reveal.tsx`). Four rules it obeys:
+   nothing depends on it, so a page with the script unrun renders complete and visible;
+   `prefers-reduced-motion` is honoured in both the script and here, so neither layer alone can
+   leak movement; only `opacity` and `transform` are touched, so nothing reflows and no link moves
+   out from under a cursor mid-click; and it always finishes, because anything that can leave
+   content invisible will eventually do it to a crawler or to a customer on a bad connection.
+   ========================================================================================== */
+
+/* The wrapper `Reveal` adds must not break the body's column: `main` still has to be the element
+   that stretches, or a short page's footer floats up the screen. */
+.anim {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim[data-anim="on"] [data-reveal] {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .anim[data-anim="on"] [data-reveal][data-shown="true"] {
+    opacity: 1;
+    transform: none;
+    transition: opacity 520ms ease, transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* A bar grows from a `scaleX` inside a track that is already its final size, so the row it sits
+     in never reflows and the number beside it never moves. */
+  .anim[data-anim="on"] [data-reveal] .bar-fill {
+    transform: scaleX(0);
+  }
+
+  .anim[data-anim="on"] [data-reveal][data-shown="true"] .bar-fill {
+    transform: none;
+    transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1) 120ms;
+  }
+
+  /* The hero does not wait for an observer. Its entrance is a CSS animation that starts on paint,
+     because a hero that waits to be told is a hero that is sometimes blank. */
+  .anim [data-hero] {
+    animation: rise 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .anim [data-hero]:nth-child(2) {
+    animation-delay: 60ms;
+  }
+
+  .anim [data-hero]:nth-child(3) {
+    animation-delay: 120ms;
+  }
+
+  .anim [data-hero]:nth-child(4) {
+    animation-delay: 180ms;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Every icon in the set (`components/icons.tsx`) sizes itself to the box it is given. */
+.icon-glyph {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ==========================================================================================
+   The provider search screen.
+   ==========================================================================================
+
+   The one screen customers spend their day in, and the only one with forty controls on it. It had
+   them in a single flat `.filters` grid: six rows of unlabelled-looking boxes, four `<details>`
+   blocks after them, and the results somewhere below the fold. Everything was present and nothing
+   was findable.
+
+   Three things carry the rework, all of them structural rather than decorative:
+
+     1. **A query bar.** The four questions nearly every search starts with - who, what specialty,
+        which state, active or not - sit in one lifted card that is always visible. Everything else
+        moved into the rail.
+     2. **Eight named groups in a rail beside the results.** Who they are, where they practise, how
+        to reach them, home address and cell, the record, who they work for, what they bill,
+        industry payments. Each is a `<details>` that opens itself when one of its filters is set
+        and carries a badge saying how many are, so a filter can be hidden but never silent.
+     3. **A chip row, and a bar at the bottom.** The chips say what the search is narrowed by and
+        remove it in one click; the bar says what the search would cost to export and keeps the
+        two buttons within reach at any scroll position.
+
+   No new palette. The tokens at the top of this file are the site's - violet ground, citron for
+   "press this" - and this screen is built from them, so it reads as the same product as the public
+   pages and follows the reader's colour scheme with no rules of its own. The prototype this came
+   from was teal; the brand is not.
+
+   No client JavaScript, which is the rule the screen already followed. The groups are `<details>`,
+   a chip's remove control is a link to the same search with one parameter dropped, and the rail
+   belongs to the query bar's form by id - so the whole rail submits as one search even though the
+   results, which hold forms of their own, sit beside it. */
+
+.ps {
+  /* The bar at the bottom is fixed, so the page needs somewhere to end underneath it. */
+  padding-bottom: 92px;
+}
+
+/* A notice sits between the heading and the query bar; neither carries a margin of its own. */
+.ps > .notice {
+  margin-bottom: 14px;
+}
+
+.ps-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.ps-head-text {
+  min-width: 0;
+  flex: 1 1 420px;
+}
+
+.ps-head h1 {
+  font-size: clamp(1.45rem, 3vw, 1.9rem);
+  margin: 10px 0 0;
+}
+
+.ps-sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 62ch;
+  margin: 6px 0 0;
+}
+
+/* The allowance, as a figure rather than a sentence. It used to be a paragraph under the lede,
+   which is where somebody reads it once and never again; the number is what they come back to. */
+.ps-allowance {
+  flex: 0 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.ps-allowance .num {
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.ps-allowance .meter {
+  margin-top: 4px;
+  max-width: none;
+}
+
+/* ---------- the query bar ---------- */
+
+.ps-query {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.ps-query .field {
+  flex: 0 1 150px;
+}
+
+.ps-query .ps-grow {
+  flex: 3 1 260px;
+}
+
+.ps-query .ps-wide {
+  flex: 2 1 200px;
+}
+
+.ps-go {
+  flex: 0 0 auto;
+}
+
+/* ---------- the chip row ---------- */
+
+.ps-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  padding-block: 14px;
+}
+
+.ps-chips-lead {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* `.chip.filter` already exists and is the right thing; this only makes room for the remove
+   control and lets a long value wrap rather than pushing the row sideways. */
+.ps-chip {
+  white-space: normal;
+  padding-right: 3px;
+  font-size: 0.74rem;
+  letter-spacing: 0.01em;
+}
+
+.ps-chip em {
+  font-style: normal;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.64rem;
+}
+
+.ps-chip-off {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.ps-chip-off:hover {
+  background: color-mix(in srgb, var(--accent-ink) 18%, transparent);
+}
+
+.ps-clear {
+  padding-block: 2px;
+  font-size: 0.78rem;
+}
+
+/* ---------- the two-column body ---------- */
+
+.ps-grid {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+/* ---------- the filter rail ---------- */
+
+.ps-rail {
+  position: sticky;
+  /* Clear of the app bar, which is sticky itself. */
+  top: calc(var(--nav-h) + 10px);
+  max-height: calc(100vh - var(--nav-h) - 28px);
+  overflow-y: auto;
+  min-width: 0;
+  padding: 4px 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.ps-rail-head {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 12px 0 2px;
+}
+
+.ps-group {
+  border-top: 1px solid var(--line-soft);
+}
+
+.ps-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 2px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.93rem;
+  list-style: none;
+}
+
+.ps-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A plus that becomes a minus: the one piece of affordance a `<details>` does not draw itself. */
+.ps-group > summary::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.ps-group[open] > summary::after {
+  content: "\2212";
+}
+
+.ps-group-name {
+  min-width: 0;
+}
+
+.ps-count {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 999px;
+  min-width: 18px;
+  padding: 1px 6px;
+  text-align: center;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 2px 2px 16px;
+}
+
+.ps-group-body .field label {
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+}
+
+.ps-group-body .field input,
+.ps-group-body .field select {
+  padding: 7px 10px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+}
+
+.ps-group-body .fine,
+.ps-note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+  max-width: none;
+}
+
+/* Two controls that are one question - a ZIP and its radius, a year and its end. */
+.ps-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* A ticked code, drug or health system. Wraps, because a procedure description is a sentence. */
+.ps-tick {
+  display: block;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+/* The group a plan does not carry: said, rather than an empty group or a missing one. */
+.ps-locked {
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: var(--surface-2);
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.ps-locked b {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+/* ---------- the results card ---------- */
+
+.ps-results {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.ps-results-empty {
+  margin: 0;
+}
+
+.ps-rhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* A row of controls that is not a search box: choose a list, or name a new one, then act.
+ *
+ * `.searchbar` was used for these first and it is the wrong thing. It is a pill built around one
+ * input that grows, it does not wrap, and it has no rule for a `<select>` - which matters because
+ * a select in a flex row keeps `min-width: auto` and will not shrink below its longest option. A
+ * list called "Cardiology - Texas - Q4 (1,234)" therefore pushed the row past the screen on a
+ * phone, and on the provider record there were three controls in that pill rather than one.
+ *
+ * This wraps instead, and every control may shrink. `11rem` is the basis rather than a width: two
+ * controls sit side by side on a laptop and stack on a phone, without a media query deciding
+ * where that happens.
+ */
+.pickbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pickbar select,
+.pickbar input {
+  flex: 1 1 11rem;
+  min-width: 0;
+}
+
+.pickbar .btn {
+  flex-shrink: 0;
+}
+
+/* The campaign builder's destination cards.
+ *
+ * Not `.ps-grid`, which is the search screen's rail-plus-results layout: its first column is a
+ * fixed 290px, so four equal cards in it came out as two narrow and two wide above 1000px, and
+ * only looked right below that because the rail layout collapses to one column there.
+ */
+.pick-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.pick-cards label {
+  min-width: 0;
+}
+
+/* One kept search: its name, what is in it, and the way to forget it. A row rather than a card -
+   there can be fifty of these and each one is a link somebody is scanning for a name. */
+.ps-saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ps-saved form {
+  margin-left: auto;
+}
+
+/* The bar that puts ticked rows on a list. Always visible rather than appearing on the first
+   tick: there is no JavaScript on this screen to notice a tick, and a control that is always
+   there is the one somebody can find before they need it. */
+.ps-pick {
+  align-items: center;
+  justify-content: space-between;
+  /* `--surface-2` is the raised-surface token the rest of the app uses - the same one the
+     table row hover takes. It was `var(--tint, ...)`, and `--tint` is not a token that
+     exists, so this always fell through to a hardcoded grey that followed neither theme. */
+  background: var(--surface-2);
+}
+
+.ps-pick-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ps-pick-acts select,
+.ps-pick-acts input {
+  /* Narrow enough that the two sit on one line on a laptop, and `min-width: 0` so they shrink
+     into one column on a phone instead of pushing the table sideways. */
+  min-width: 0;
+  max-width: 14rem;
+}
+
+.ps-rfoot {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+  align-items: center;
+}
+
+.ps-rfoot .fine {
+  margin-left: auto;
+}
+
+.ps-n {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.ps-n span {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.9rem;
+}
+
+.ps-stray {
+  flex-basis: 100%;
+  color: var(--warn);
+}
+
+.ps-tw {
+  overflow-x: auto;
+}
+
+.ps-tw table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ps-tw th {
+  text-align: left;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ps-tw td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: top;
+}
+
+.ps-tw tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ps-tw tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+/* ---------- the results row, on one line ----------
+ *
+ * Every cell here used to stack. The provider cell put the NPI under the name and an "Open the
+ * record" link under that; Where put the employer under the place; Contact put what is held above
+ * the button and the cost below it. Three lines minimum, so a 900px screen showed six providers
+ * and the product read as a form that happens to return rows.
+ *
+ * Beside, not under. The facts are all still here - the NPI is the thing people paste into another
+ * system, and the employer is how somebody recognises a practice - they are simply on the line
+ * they belong to, dimmed, with the long ones truncated and carried in a `title`. */
+
+.ps-npi {
+  margin-left: 8px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+
+.ps-where {
+  white-space: nowrap;
+}
+
+/* A secondary fact on its own line under the primary one: a list's description, an official's
+   title, a taxonomy's specialization. Four pages mean this by it. The results row wanted
+   something else and now asks for it by another name - see `.ps-aside` below. */
+.ps-employer {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+/* Beside the primary rather than under it, for the results row. Two classes because the two
+   things put here are different lengths: the reveal cost is always short, an employer name can
+   be a hospital system's full legal name, and clipping the short one at 18 characters would clip
+   "1 reveal - 240 left" at the dot. */
+.ps-aside {
+  margin-left: 8px;
+  color: var(--muted);
+}
+
+.ps-aside-clip {
+  display: inline-block;
+  max-width: 18ch;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  color: var(--muted);
+}
+
+/* The sortable column headers. A link that looks like the header it replaces until it is hovered,
+   because a table of five headers where two are blue reads as a table with two links in it. */
+.app-shell .ps-sort {
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-shell .ps-sort:hover,
+.app-shell .ps-sort:focus-visible {
+  color: var(--accent-ink, var(--ink));
+  text-decoration: underline;
+}
+
+/* What the row holds, beside the Reveal button rather than above it. It is still the thing to
+   read before deciding - that was right - but a block made the contact cell three lines tall on
+   every row, including the rows nobody was deciding about. */
+.ps-held {
+  margin-right: 8px;
+}
+
+/* The reveal note on a record page, under the button: it is a sentence, not a label. The results
+   row's short version is `.ps-aside`. */
+.ps-cost {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ps-contact {
+  min-width: 210px;
+}
+
+.ps-panel {
+  margin-top: 18px;
+}
+
+/* ---------- the bar at the bottom ---------- */
+
+.ps-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 30px -22px rgba(21, 11, 44, 0.5);
+}
+
+.ps-bar-inner {
+  max-width: 1180px;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ps-bar-n {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.ps-bar-acts {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- narrow ---------- */
+
+/* 1120 rather than 1000. Between the two, a 1024 laptop kept the two-column layout and gave the
+   results 659px - a five-column table squeezed beside a 290px rail, which is the worst of both
+   arrangements. Stacking sooner hands the table the full width at that size. */
+@media (max-width: 1120px) {
+  /* One column, rail first: the filters are what somebody came to change, and a sticky rail with
+     nowhere to stick is worse than a block that scrolls with the page. */
+  .ps-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ps-rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 560px) {
+  .ps-query .field,
+  .ps-query .ps-grow,
+  .ps-query .ps-wide {
+    flex: 1 1 100%;
+  }
+
+  .ps-go {
+    width: 100%;
+  }
+
+  /* On a phone the bar is a third of the screen if it keeps the sentence, so it keeps the number
+     and the two buttons. What a search would cost is still spelled out in the export panel. */
+  .ps-bar .fine {
+    display: none;
+  }
+
+  .ps-bar-acts {
+    margin-left: auto;
+  }
+
+  .ps {
+    padding-bottom: 104px;
+  }
+}
+
+/* ==========================================================================================
+   Search everything (/app/find).
+   ==========================================================================================
+
+   This screen was four unordered lists of blue links, each row a name, a dot and a subtitle. It
+   told a reader what a row was called and nothing else, so evaluating any result cost a click -
+   which is the whole job of a search result page, not done.
+
+   What a row may say is bounded by what `/api/search` returns: a title, a subtitle, badges, and
+   the row's own identifier. Nothing here invents more than that. What changed is that all of it
+   is visible at once, in the same place on every row, and the four kinds are told apart by colour
+   before a heading is read.
+
+   The one thing it still cannot show is whether we hold an email, a phone or a home address for a
+   row - which is the signal that would let somebody choose between two results without opening
+   either. That needs the API to return it; it is not a layout problem and is not faked here. */
+
+.find-head {
+  max-width: 62ch;
+}
+
+.find-head h1 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  margin: 10px 0 0;
+}
+
+.find-lede {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 8px 0 0;
+}
+
+/* ---------- the box ---------- */
+
+.find-box {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.find-box input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 1rem;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.find-box input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.find-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  margin-top: 14px;
+}
+
+.find-examples-lead {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- the shape of the answer ---------- */
+
+.find-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 22px;
+}
+
+.find-summary .num {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.find-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px 4px 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.find-chip:hover {
+  border-color: var(--accent);
+}
+
+.find-chip b {
+  font-variant-numeric: tabular-nums;
+}
+
+.find-note {
+  margin-top: 14px;
+}
+
+.find-notice {
+  margin-top: 20px;
+}
+
+/* ---------- the kind badge ----------
+   A letter in the group's own colour. Four kinds that look identical are four kinds somebody has
+   to read a heading to tell apart; a hospital and a person are different things. */
+
+.find-kind {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.find-provider {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.find-org {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.find-facility {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.find-person {
+  background: var(--stop-soft);
+  color: var(--stop);
+}
+
+.find-other {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+/* ---------- a group ---------- */
+
+.find-group {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+  scroll-margin-top: 80px;
+}
+
+.find-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.find-group-head h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.find-count {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.find-seeall {
+  margin-left: auto;
+}
+
+/* ---------- a row ---------- */
+
+.find-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.find-rows li + li .find-row {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* The whole row is the link, not the name inside it: a target the width of the card is the
+   difference between scanning a list and aiming at one. */
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.find-row:hover {
+  background: var(--surface-2);
+}
+
+.find-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.find-title {
+  font-weight: 600;
+}
+
+.find-row:hover .find-title {
+  color: var(--accent-ink);
+}
+
+.find-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.find-ref {
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* What the number is, so an identifier is never an unexplained string of digits. */
+.find-ref-label {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.find-badges {
+  flex: none;
+  display: flex;
+  gap: 5px;
+}
+
+@media (max-width: 720px) {
+  /* The identifier and the badges go under the name rather than competing with it for a line. */
+  .find-row {
+    flex-wrap: wrap;
+  }
+
+  .find-main {
+    flex: 1 1 100%;
+  }
+
+  .find-ref,
+  .find-badges {
+    margin-left: 38px;
+  }
+
+  .find-sub {
+    white-space: normal;
+  }
+}
+
+/* What we hold for a row, as two states rather than a presence and an absence.
+   "Email" greyed out says we looked and hold none, which is a different answer from a row that
+   was never asked - and the difference is what lets somebody choose between two results without
+   spending a reveal on either. Suppression is applied before the flag is set, so a provider whose
+   only address is suppressed reads here as "no email": the truth about what anybody could be
+   given, rather than about what is in the table. */
+.find-held {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.find-held-one {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.find-held-one.yes {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.find-held-one.no {
+  background: var(--surface-2);
+  color: var(--muted);
+  opacity: 0.65;
+}
+
+@media (max-width: 720px) {
+  .find-held {
+    margin-left: 38px;
+  }
+}
+
+/* What a closed filter group contains.
+   Eight headings answer "where would I look" and not "is it there at all": somebody who does not
+   know we filter on a CMS star rating has no reason to open The record, and the heading will never
+   tell them. Hidden once the group is open, where the controls themselves say it better. */
+.ps-group-holds {
+  flex-basis: 100%;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.ps-group[open] > summary .ps-group-holds {
+  display: none;
+}
+
+.ps-group > summary {
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================================
+   The record, and how far down it you may read.
+   ==========================================================================================
+
+   The site's one primitive (components/ProviderRecord.tsx). Every surface that matters - the
+   hero, a plan card, a search result, a city page - is this object with a different band open,
+   because that is what the product is. The pricing is explained by the layout rather than by a
+   paragraph underneath it.
+
+   A held field is drawn as a bar, never as a blur and never as empty space. Blur says "there is
+   something here you cannot read", which is a lie when the value is not in the response at all;
+   empty says "we do not have this", which is a different and worse lie. A bar says held, and the
+   field is still named beside it so the reader knows exactly what they are not being shown.
+
+   The ladder is an `<ol>` because the order carries meaning: public record, then the part we
+   verified, then the part that is personal and fenced. That is also the order of how freely each
+   may be given away, which is the argument the page is making.
+   ------------------------------------------------------------------------------------------ */
+
+.prec {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.prec-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.prec-name {
+  font-family: var(--font-display), serif;
+  font-size: 1.22rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.008em;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prec-sub {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.prec-npi {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+/* ---- the ladder */
+
+.prec-bands {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.prec-band {
+  position: relative;
+  padding: 14px 0 14px 18px;
+  border-left: 2px solid var(--line);
+}
+
+.prec-band + .prec-band {
+  border-top: 1px solid var(--line-soft);
+}
+
+/* An open band is spined in the accent; a held one keeps the hairline. The spine is the only
+   place the ladder is drawn, so the eye follows one vertical line down to where it stops. */
+.prec-band.is-open {
+  border-left-color: var(--accent-ink);
+}
+
+.prec-band-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.prec-band-n {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--line-soft);
+  flex: none;
+}
+
+.prec-band.is-open .prec-band-n {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.prec-band-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.prec-gate {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: auto;
+}
+
+/* ---- the fields */
+
+.prec-fields {
+  margin: 0;
+  display: grid;
+  gap: 7px 18px;
+  grid-template-columns: minmax(8.5rem, auto) 1fr;
+}
+
+.prec-field {
+  display: contents;
+}
+
+.prec-field > dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.prec-field > dd {
+  margin: 0;
+  font-size: 0.88rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The held bar. Deliberately the width of a short value rather than of the column, so a row of
+   them does not read as a loading skeleton. */
+.prec-bar {
+  display: block;
+  width: min(9rem, 70%);
+  height: 0.7em;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--line) 0 4px,
+    var(--line-soft) 4px 8px
+  );
+}
+
+.prec-field.is-held > dt {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.prec-caption {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+/* On the ink ground the record keeps its own surface rather than dissolving into the band. */
+.on-ink .prec,
+.hero .prec,
+.cta .prec {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--glass-line);
+}
+
+@media (max-width: 560px) {
+  .prec {
+    padding: 16px;
+  }
+  .prec-fields {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+  .prec-field > dt {
+    font-size: 0.76rem;
+  }
+  .prec-field + .prec-field > dt {
+    margin-top: 8px;
+  }
+  .prec-gate {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}
+
+/* ---- the reach ladder, on /pricing
+ *
+ * Three bands beside one record. The record shows band 1 open and the rest held; the list says
+ * what each band is and what opens it. Show, then tell - in that order, because the bars explain
+ * themselves faster than the sentence does. */
+
+.ladder {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 32px;
+  align-items: start;
+  margin-top: 28px;
+}
+
+.ladder-bands {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ladder-band {
+  display: flex;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ladder-band:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.ladder-n {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.78rem;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 2px;
+  border: 1px solid var(--line);
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+
+.ladder-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: -0.006em;
+}
+
+.ladder-what {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.ladder-prov {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  max-width: 54ch;
+}
+
+.ladder-gate {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  color: var(--accent-ink);
+}
+
+.ladder-demo {
+  position: sticky;
+  top: calc(var(--nav-h) + 20px);
+}
+
+/* The plan card's first fact is now how far it reads, not how much it carries. */
+.plan-reach {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent-ink);
+  background: var(--surface-2);
+}
+
+.plan-reach-label {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.plan-reach-band {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 900px) {
+  .ladder {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .ladder-demo {
+    position: static;
+  }
+}
+
+/* ---- the hero's proof and its call to action
+ *
+ * The pattern every serious data site in this market uses, because it works: the claim, then
+ * three or four figures that back it, then one generous offer. What is different here is that
+ * the figures are read from the API when the page renders rather than typed into the markup, so
+ * a number on this page cannot quietly become last quarter's. A figure that did not come back is
+ * dropped from the list; none of them is ever printed as nought. */
+
+.proof {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+
+.proof li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.97rem;
+  line-height: 1.45;
+}
+
+.proof b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.proof-tick {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent-ink);
+}
+
+.hero .proof-tick {
+  color: var(--signal);
+}
+
+.hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.btn.big {
+  padding: 13px 22px;
+  font-size: 1rem;
+  border-radius: var(--radius);
+}
+
+.hero-cta-fine {
+  color: var(--on-ink-muted);
+  font-size: 0.85rem;
+}
+
+.section .hero-cta-fine {
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .hero-cta {
+    gap: 10px;
+  }
+  .hero-cta .btn.big {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+  .hero-cta-fine {
+    flex-basis: 100%;
+  }
+}
+
+/* The analytics consent bar (components/AnalyticsConsent.tsx): fixed at the foot of the viewport,
+   above the footer, until the visitor chooses. It never covers the header or the skip link. */
+.consent-bar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  padding: 0.85rem max(1rem, env(safe-area-inset-left)) max(0.85rem, env(safe-area-inset-bottom));
+  background: var(--bg-elevated, #fff);
+  border-top: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.08);
+  font-size: 0.925rem;
+}
+.consent-bar p {
+  margin: 0;
+  flex: 1 1 28rem;
+}
+.consent-bar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+.consent-pref {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin: 0.5rem 0 1rem;
+}
+.consent-pref p {
+  margin: 0;
+  flex: 1 1 24rem;
+}

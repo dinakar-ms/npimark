@@ -1,0 +1,8 @@
+.np-destination-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:32px 0}
+.np-destination{display:flex;flex-direction:column;gap:12px;align-items:flex-start;text-align:left;background:#fff;border:1px solid #dce3ef;border-radius:16px;padding:24px;color:#17233e;font:inherit;cursor:pointer}
+.np-destination.chosen{border:2px solid #4563ef;background:#f4f6ff;padding:23px}.np-destination b{font-size:1.25rem}
+.np-delivery-card{background:white;border:1px solid #dce3ef;border-radius:18px;padding:clamp(20px,3vw,36px);margin:24px 0;min-width:0}
+.np-delivery-card>label{display:block;margin:16px 0 8px}.np-delivery-card select{width:100%;max-width:720px;padding:12px;background:#fff;border:1px solid #bdc9de;border-radius:10px;font:inherit;color:inherit}
+.np-delivery-actions{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0}.np-delivery-table{overflow-x:auto}.np-delivery-table table{width:100%;border-collapse:collapse}.np-delivery-table td,.np-delivery-table th{text-align:left;padding:12px;border-bottom:1px solid #e3e8f1}.np-delivery-table caption{text-align:left;padding:12px 0;color:#64748b}
+.np-delivery-confirm input{margin-right:10px}.np-delivery-card code{overflow-wrap:anywhere}.np-delivery-card button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:900px){.np-destination-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.np-destination-grid{grid-template-columns:1fr}.np-delivery-actions>*{width:100%}}

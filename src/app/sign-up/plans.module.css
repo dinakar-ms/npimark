@@ -1,0 +1,22 @@
+.page { padding: clamp(24px, 5vw, 64px) clamp(16px, 4vw, 64px); max-width: 1600px; margin: auto; }
+.intro { max-width: 760px; margin-bottom: 32px; }
+.intro h1 { font-size: clamp(32px, 4vw, 56px); line-height: 1.08; margin: 12px 0 16px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 32px; align-items: start; }
+.plans { border: 0; padding: 0; margin: 0; min-width: 0; }
+.plans legend { font-size: 22px; font-weight: 700; margin-bottom: 18px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.card { display: flex; flex-direction: column; position: relative; padding: 24px 18px; border: 2px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--ink); cursor: pointer; min-width: 0; }
+.card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-glow); }
+.card:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 4px; }
+.card input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0 0 16px; }
+.name { font-size: 21px; font-weight: 750; }
+.price { font-size: 34px; font-weight: 750; margin-top: 14px; letter-spacing: -1px; }
+.caption { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.features { list-style: none; padding: 18px 0 0; margin: 18px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.features li { margin-bottom: 12px; line-height: 1.5; }
+.select { margin-top: auto; padding-top: 18px; font-weight: 700; color: var(--accent); }
+.account { padding: 26px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); min-width: 0; }
+.account h2 { font-size: 24px; margin-top: 0; }
+.note { font-size: 14px; line-height: 1.65; color: var(--muted); margin-top: 18px; }
+@media (max-width: 1150px) { .layout { grid-template-columns: 1fr; } .account { max-width: none; } }
+@media (max-width: 650px) { .grid { grid-template-columns: 1fr; } .card { padding: 22px; } .account { padding: 22px; } }

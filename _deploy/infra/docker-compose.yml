@@ -1,0 +1,375 @@
+# NPI Intelligence 5 — production stack on a single DigitalOcean droplet.
+# Deployed by infra/deploy/deploy.sh; do not `docker compose up` by hand unless you set TAG.
+#
+# Runs side by side with v4 (container `npi` on 127.0.0.1:8000): v5 listens on 127.0.0.1:8080
+# and keeps its own data under ${DATA_MOUNT}/v5 — v4's files are never touched.
+
+name: npi-v5
+
+x-app: &app
+  image: ${REGISTRY:?set REGISTRY in infra/.env}/npi-api:${TAG:?set TAG}
+  env_file: ${APP_ENV_FILE:-/etc/npi-v5/app.env}
+  # Anchored so the workers can add their lane to it: a service's own `environment:` replaces
+  # this mapping wholesale rather than merging into it.
+  environment: &app-env
+    DATABASE_URL: postgresql+psycopg://npi:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/npi
+    DATA_ROOT: /data
+    CONSUMER_ROOT: /mnt/consumer_data
+    GIT_COMMIT: ${TAG}
+    # The contact government downloads name in their User-Agent (BLS refuses requests without
+    # one). Set in the deploy's .env; empty leaves the organization's name.
+    SOURCE_FETCH_CONTACT: ${SOURCE_FETCH_CONTACT:-}
+    # A US forward proxy, from when this server was in Canada and some publishers refused
+    # non-US addresses. **The server is in the United States now, and the proxy it points at
+    # (167.71.92.21:8888) no longer accepts a TCP connection** - measured 11 Oct 2026 from
+    # inside the api container, against the proxy itself and through it. So it is obsolete
+    # rather than broken, and nothing should be built on it or tested through it.
+    #
+    # Leaving the setting in place costs nothing, which is why it is still here: `Http.send`
+    # self-heals. A pinned host tries the relay, gets no HTTP response, falls back to direct,
+    # and then drops the pin (`forget_relay_host`); a pin is only added after a relay send
+    # succeeds, which can no longer happen. Each stale pin costs one timeout once.
+    #
+    # The sentence that used to be here said the purpose was "sources that refuse non-US
+    # addresses (the server is in Canada)". That outlived the migration and cost real time
+    # twice: it is why `US_ONLY_HOSTS` had pinned www.cde.ca.gov to a dead proxy and the error
+    # blamed CDE, and why "try the relay" was the first thing tried against the FCC's 403.
+    OUTBOUND_US_PROXY_URL: ${OUTBOUND_US_PROXY_URL:-}
+    # Per API worker (the image runs two) and per worker process, beside Postgres's own memory.
+    # 48 GB each was most of the machine; a query that needs more spills to disk instead.
+    CONSUMER_DUCKDB_MEMORY_LIMIT: ${CONSUMER_DUCKDB_MEMORY_LIMIT:-16GB}
+  restart: unless-stopped
+  # `host.docker.internal` is the host as seen from inside the container. Linux does not provide
+  # it by default, and without it a model running on this machine is unreachable from here - the
+  # container's own 127.0.0.1 has nothing listening on it. See infra/OLLAMA.md.
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  depends_on:
+    db:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # A container that dies mid-transaction leaves its connection holding locks; the next attempt
+    # then waits on a client that will never speak again (this stranded a 50-minute import once).
+    # Keepalives notice the dead peer, and the timeout releases anything left idle in a transaction.
+    # Long COPYs are *active*, not idle, so they are unaffected.
+    # Sized for this box (125 GB RAM, NVMe) instead of Postgres's out-of-the-box defaults,
+    # which assume a small shared machine: 128 MB of cache and a 1 GB WAL meant every count
+    # read from disk and checkpoints fired seconds apart during a load. Changing any of these
+    # restarts the database on the next deploy.
+    command:
+      - postgres
+      #: What Postgres keeps in its own cache. 4 GB holds the indexes the searches walk.
+      - -c
+      - shared_buffers=4GB
+      #: What it may assume the machine caches for it, which decides index vs scan.
+      - -c
+      - effective_cache_size=32GB
+      #: Per sort or hash. 4 MB sent every large ORDER BY to disk.
+      - -c
+      - work_mem=32MB
+      #: For index builds, VACUUM and ANALYZE.
+      - -c
+      - maintenance_work_mem=1GB
+      #: NVMe, not a spinning disk: a random read costs almost what a sequential one does.
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      #: Checkpoints every few seconds during a bulk load, at 1 GB.
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - idle_in_transaction_session_timeout=900000
+      - -c
+      - tcp_keepalives_idle=60
+      - -c
+      - tcp_keepalives_interval=10
+      - -c
+      - tcp_keepalives_count=6
+    environment:
+      POSTGRES_DB: npi
+      POSTGRES_USER: npi
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ${DATA_MOUNT:-/mnt/npidata}/v5/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U npi -d npi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # Parallel workers pass their results through /dev/shm, and a parallel VACUUM with
+    # maintenance_work_mem=1GB asks for that much at once: at 1 GB it failed with "could not
+    # resize shared memory segment ... No space left on device" (19 Sep). It is tmpfs on a
+    # 125 GB box, so it costs nothing until used.
+    shm_size: 4gb
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  api:
+    <<: *app
+    # Trust forwarded headers only from the compose network, not from anywhere (`*`).
+    #
+    # The recorded client IP is what `audit_events.ip` keeps for every sign-in, so whoever can
+    # set `X-Forwarded-For` decides what that log says. This port is not published to the host, so
+    # today the only senders are containers on this network - but `*` would also trust a forged
+    # header from any one of them, and it stops being merely untidy the moment this API is reached
+    # from anywhere else.
+    #
+    # The range, not the measured subnet: Docker allocates bridge networks from 172.16.0.0/12 and
+    # the exact /16 is assigned at creation, so pinning the one observed today (172.18.0.0/16)
+    # breaks silently the first time the networks come up in a different order. Untrusted peers are
+    # not refused - uvicorn simply ignores their forwarded header and records the real peer address,
+    # which is the honest answer anyway.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
+              "--proxy-headers", "--forwarded-allow-ips=172.16.0.0/12"]
+    # Long enough for a request that is already running to finish before the container is killed.
+    # A consumer count or preview over 266.7M rows takes about five seconds; the 10s default
+    # would cut the slowest of them off mid-flight during a deploy.
+    stop_grace_period: 30s
+    volumes:
+      - ${DATA_MOUNT:-/mnt/npidata}/v5/data:/data
+      - ${CONSUMER_MOUNT:-/mnt/consumer_data}:/mnt/consumer_data:ro
+
+  # Two workers, one per lane (backend/app/job_lanes.py). `worker` takes everything but the long
+  # resumable loads, so an export or the government refresh never waits hours behind a plan-
+  # network load; `worker-bulk` takes only those loads. A deploy waits for the interactive
+  # worker's jobs and hands the bulk worker's back - they resume on the new release. /api/ready
+  # fails while either lane has no live worker (WORKER_EXPECTED_LANES, default both).
+  worker: &worker
+    <<: *app
+    command: ["python", "-m", "app.worker"]
+    environment:
+      <<: *app-env
+      WORKER_LANE: interactive
+    stop_grace_period: 60s
+    volumes:
+      - ${DATA_MOUNT:-/mnt/npidata}/v5/data:/data
+      - ${CONSUMER_MOUNT:-/mnt/consumer_data}:/mnt/consumer_data
+      # Read-only view of the v4 data migrated from the old host: the NPPES/email/enrichment
+      # SQLite the loader reads, the CMS warehouse shards and the rescued source downloads.
+      - ${DATA_MOUNT:-/mnt/npidata}:/mnt/npidata:ro
+    # The image's HEALTHCHECK probes the API port, which the worker doesn't serve. Worker health
+    # is its heartbeat, checked by /api/ready (the deploy gate).
+    healthcheck:
+      disable: true
+
+  # Same image, volumes and grace period as `worker`; only the lane differs. Two of them,
+  # because one meant a single long load held the whole lane: on 9-10 Oct
+  # `irs.correct_filings` ran for 33 hours while `insurance.load_networks`, `intl.import` and
+  # `cms.fetch_open_payments` sat queued behind it, and four pipelines read "running" the whole
+  # time because the step each was on had not started. Nothing was broken and nothing said so.
+  #
+  # Two is safe, which is worth stating because it is the obvious thing to doubt. A job is
+  # claimed with `FOR UPDATE SKIP LOCKED ... of=Job`, so two workers cannot take the same one.
+  # Every job that stages into a fixed-name table holds a per-module key
+  # (`app.jobs.one_at_a_time`), so two *different* bulk jobs cannot drop and recreate each
+  # other's staging tables. `/api/ready` asks for one fresh worker per lane and does not count
+  # them, so a second one neither satisfies nor breaks it.
+  #
+  # Memory is the real limit: each worker process gets its own
+  # `CONSUMER_DUCKDB_MEMORY_LIMIT` (16 GB default), so two DuckDB consumer or auto loads at
+  # once can ask for 32 GB. Measured on this box - 125 GB total, 106 GB available, each worker
+  # ~150 MB when it is not loading - that leaves room. Raise the replica count again only
+  # after re-measuring that, not on the strength of the core count.
+  #
+  # `replicas` rather than a second service, so that every `up -d worker-bulk`,
+  # `rm -sf worker-bulk` and `logs worker-bulk` in infra/deploy keeps covering all of them.
+  worker-bulk:
+    <<: *worker
+    environment:
+      <<: *app-env
+      WORKER_LANE: bulk
+    deploy:
+      # Three since 22 Oct 2026: two were both held by a day-long re-verification run while a
+      # client's email research had to wait behind it. The verifier and research jobs are
+      # HTTP-bound, not memory-bound, so a third worker shares the verifier, not the RAM.
+      # Re-measured the same day, as the note above asks: 125 GB total, 108 GB available,
+      # each bulk worker ~215 MB idle, Postgres 10.8 GB - three DuckDB loads at 16 GB fit.
+      replicas: 3
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["python", "-m", "app.cli", "migrate"]
+    profiles: ["tools"]
+    volumes:
+      - ${DATA_MOUNT:-/mnt/npidata}/v5/data:/data
+
+  # The model behind AI search. A service rather than something installed on the host: the deploy
+  # account cannot sudo, and this way there is no systemd unit, no firewall rule, and nothing
+  # published to the host - the API reaches it over the project's own network and nothing else
+  # can reach it at all.
+  #
+  # Weights live in a named volume, so pulling a model survives a deploy. Nothing pulls one
+  # automatically: a 5GB download on container start would make every deploy wait for it.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    profiles: ["ai"]
+    volumes:
+      - ollama_models:/root/.ollama
+    # No `ports:` on purpose. An inference endpoint nobody outside this network can reach is one
+    # nobody outside this network can spend our hardware on.
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  web:
+    image: ${REGISTRY}/npi-web:${TAG}
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "${WEB_BIND:-127.0.0.1:8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  # The public customer site. Separate from `web` on purpose: `web` is the admin SPA plus the
+  # API proxy, and customers must never be handed either. This one holds an API key with
+  # providers.read and talks to the api container over the project network, which is the same
+  # thing an outside customer's own server would do.
+  #
+  # Its own port, so exposing the site publicly later never means exposing the admin app: one
+  # `tailscale serve` (or one Cloudflare origin) points at this port and nothing else.
+  site:
+    image: ${REGISTRY}/npi-site:${TAG}
+    restart: unless-stopped
+    depends_on: [api]
+    env_file:
+      # Optional so a host that has not been given a site key yet still deploys the rest of the
+      # stack instead of failing the whole release on a missing file.
+      - path: ${SITE_ENV_FILE:-/etc/npi-v5/site.env}
+        required: false
+    environment:
+      NPI_API_BASE_URL: ${SITE_API_BASE_URL:-http://api:8000}
+      SITE_BASE_URL: ${SITE_BASE_URL:-}
+      SITE_INDEXABLE: ${SITE_INDEXABLE:-false}
+    volumes:
+      # State the site must keep across a deploy, because both things living here are files and
+      # the container is replaced several times on a working day.
+      #
+      # The AI assistant's daily budget is one file per request under a dated folder, so without
+      # this the 20-per-organisation cap resets at every release - a cost control that silently
+      # stops controlling.
+      #
+      # The delivery receipts matter more. `deliverOnce` takes a lock and writes a receipt so the
+      # same export cannot be sent to the same destination twice; on container storage, both
+      # vanish with the container, and the guard against delivering a customer's contacts to
+      # their CRM a second time goes with them. Enabling delivery without this is worse than
+      # leaving it switched off.
+      #
+      # Named rather than a host bind so the directory arrives already owned by `nextjs` from the
+      # image: Docker seeds a fresh named volume from the image's contents, which a bind mount
+      # does not do, and the site runs as uid 1001.
+      - site_state:/var/lib/npimark
+    ports:
+      - "${SITE_BIND:-127.0.0.1:8090}:3000"
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+  # The public edge: the only container with a route from the internet.
+  #
+  # Behind a profile, so it cannot start by accident. `web` keeps serving the admin app on
+  # loopback for the tailnet and never learns a public hostname - the separation is what stops
+  # a DNS record from publishing every admin screen.
+  #
+  # The two domains used to be `${VAR:?...}` here, which read well and broke every deploy:
+  # Compose interpolates **every** service before it filters by profile, so a stack that was
+  # never going to start `edge` still refused to resolve without them. CI could not validate
+  # the file and the release never ran. They default to empty instead, and the guard lives
+  # where it actually bites - Caddy will not start on an empty site address, so turning the
+  # profile on without setting them fails loudly, in the one container that cares.
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: ["public"]
+    depends_on: [api, site]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:-}
+      API_DOMAIN: ${API_DOMAIN:-}
+      # Staging's admin is on a public hostname, so the edge asks for a password. The default
+      # hash is a valid bcrypt of a random value that was discarded, which makes the unset state
+      # LOCKED rather than open - an operator who forgets gets 401, not a published admin app.
+      # The doubled `$$` are compose escaping; Caddy receives single dollars.
+      # Addresses that skip staging's password, space-separated, CIDR allowed. The default is
+      # TEST-NET-1 from RFC 5737 - reserved for documentation, so it matches nobody and the
+      # unset state asks everyone for the password. Real addresses go in infra/.env, not here:
+      # an operator's home IP is not a thing to commit.
+      # Staging's customer site. Defaulted rather than left empty for the same reason STG_DOMAIN
+      # is: an empty value is "a server block without any key", which is a config error that takes
+      # the whole public edge down, production included.
+      STG_SITE_DOMAIN: ${STG_SITE_DOMAIN:-stg-site.localhost}
+      STG_ALLOW_IPS: ${STG_ALLOW_IPS:-192.0.2.1}
+      STG_BASIC_AUTH_USER: ${STG_BASIC_AUTH_USER:-staging}
+      STG_BASIC_AUTH_HASH: ${STG_BASIC_AUTH_HASH:-$$2a$$14$$lRsrMQR3tms0H0YAGkcm9.nI1ABPrFfFmXBOTOmUYAOg9nWX38W3m}
+      # The admin tool on its own public hostname, for hosts that serve it that way rather than
+      # over the tailnet. Caddy expands `{$ADMIN_DOMAIN}` into a site block's address, and an
+      # address that expands to nothing is not a parse error: Caddy reads the file, writes
+      # "using config from file", and exits 1 with no further message. With `restart:
+      # unless-stopped` that presents as a crash loop whose logs say only that the config was
+      # read - which is a long way from "a variable is missing".
+      #
+      # The default is `localhost`, not empty. Once `Caddyfile.public` carries the admin site
+      # block, an EMPTY value is the broken case - `caddy validate` then fails with "server block
+      # without any key is global configuration", measured 7 Oct. `localhost` keeps a host that
+      # does not serve the admin publicly working: the block parses, Caddy signs it with its
+      # internal CA rather than asking ACME for a public certificate, and nothing outside the
+      # container can reach it.
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-localhost}
+      # Staging's admin on its own public hostname. Same shape as ADMIN_DOMAIN above, and the same
+      # reason for a non-empty default - but a DIFFERENT one, because two site blocks cannot share
+      # an address: with both defaulting to `localhost` Caddy refuses the config outright.
+      STG_DOMAIN: ${STG_DOMAIN:-stg.localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    # Bound to one address rather than every interface, because on this host `tailscaled` already
+    # holds :443 on the tailnet address - that is how the admin tool is reached - and a bind to
+    # 0.0.0.0 collides with it: "failed to bind host port 0.0.0.0:443/tcp: address already in use".
+    # The edge wants the public address and nothing else, so EDGE_BIND names it. The default keeps
+    # the old behaviour for any host where nothing else is listening.
+    ports:
+      - "${EDGE_BIND:-0.0.0.0}:80:80"
+      - "${EDGE_BIND:-0.0.0.0}:443:443"
+      - "${EDGE_BIND:-0.0.0.0}:443:443/udp"
+    # `default` is listed explicitly: naming any network here stops Compose adding the project's
+    # own, and without it the edge loses `api`, `web` and `site`. `shared` is how it reaches the
+    # STAGING stack, which is a separate Compose project - staging's web publishes on the host's
+    # loopback, and a container cannot reach a loopback-bound port (`host-gateway` resolves to the
+    # bridge address, not to 127.0.0.1), so a shared network is the connection, not a host port.
+    networks:
+      - default
+      - shared
+    volumes:
+      - ./Caddyfile.public:/etc/caddy/Caddyfile:ro
+      - caddy_public_data:/data
+      - caddy_public_config:/config
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
+
+# Created by `deploy.sh` and `deploy-stg.sh` before either stack starts, so a host that has never
+# had staging still deploys: an `external` network that does not exist is a hard Compose error.
+networks:
+  shared:
+    external: true
+    name: ${SHARED_NETWORK:-npi-shared}
+
+volumes:
+  caddy_data:
+  caddy_public_data:
+  caddy_public_config:
+  ollama_models:
+  #: The site's own state: the AI assistant's daily budget and the delivery receipts. Both are
+  #: files, and the site container is replaced several times on a working day.
+  site_state:

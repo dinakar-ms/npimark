@@ -1,0 +1,478 @@
+# The public face: the customer site and the versioned API, on real hostnames.
+#
+# Why this is a second file
+# -------------------------
+# `Caddyfile` serves the admin app and the whole `/api` surface on loopback, reached only over
+# Tailscale. That file must never learn a public hostname: the moment it does, every admin screen
+# and every session endpoint is one DNS record away from the internet.
+#
+# So the public edge is its own config, in its own container, and it can reach exactly two things:
+# the site, and `/api/v1` - plus the single Stripe webhook route, which is signature-checked and
+# has no session behind it. Nothing here can route to `/api/auth`, `/api/imports`, `/api/consumer`
+# or any other internal path, because no directive here mentions them - and a path that is not
+# mentioned is a 404 rather than a proxy.
+#
+# How to turn it on
+# -----------------
+# Set SITE_DOMAIN and API_DOMAIN in infra/.env, point their DNS at this host, and run the
+# `edge` service (profile `public`). Caddy gets certificates itself on first request. The profile
+# is what keeps this off: nothing starts it unless it is asked for by name. Asking for it without
+# those two variables set fails here, on an empty site address, rather than publishing anything.
+#
+# Cloudflare in front of this is still the plan for WAF, bot rules and caching. This works
+# without it, and having it does not change these rules - it adds a layer, it does not replace
+# one.
+
+{
+	admin off
+	email {$ACME_EMAIL}
+	servers {
+		# Cloudflare's ranges, when it is in front. Without this a proxied request's client IP is
+		# Cloudflare's edge, and the API's rate limits would then count every customer as one.
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		# Right to left: the first address from the right that is not one of the proxies above.
+		# Without this Caddy takes the *leftmost* entry once the peer is trusted - and behind
+		# Cloudflare that entry is whatever the client put in its own X-Forwarded-For.
+		trusted_proxies_strict
+	}
+}
+
+# --- who asked for what ------------------------------------------------------------------------
+# The public edge kept no access log at all. Not a decision - there was simply no `log` directive,
+# so the container printed certificate and health lines and nothing else. The first time it
+# mattered was 2026-10-05: asked whether a search engine had fetched a page, the honest answer was
+# that the box could not say.
+#
+# To stdout, which Docker already rotates for this container at 20 MB x 5 in `docker-compose.yml`,
+# so this cannot fill a disk - the 1 October outage was a full disk and that lesson is not for
+# re-learning. JSON because the fields are then greppable with `jq` rather than by position.
+#
+# Caddy redacts `Authorization` and `Cookie` from the logged headers itself. What is left that is
+# worth being deliberate about is the **query string**, which on this site carries search terms:
+# it is kept, because a support question about a search nobody can reproduce is unanswerable
+# without it, and because the rotation above bounds how long it lives.
+(accesslog) {
+	log {
+		output stdout
+		format json
+	}
+}
+
+(hardened) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		# Temporary hydration repair: Next emits inline bootstrap scripts even for server-rendered
+		# pages. Allow them until a nonce policy AND dynamic rendering/cache changes ship together.
+		# Do not add unsafe-eval. Cloudflare analytics injection should be disabled at the edge.
+		# form-action names Stripe's two hosted pages because browsers apply it to the redirect
+		# that follows a form post: Upgrade and Manage billing post to our own handler, which
+		# answers 303 to checkout.stripe.com or billing.stripe.com, and without these the browser
+		# would block that hop. No form on the site posts to Stripe directly.
+		# challenges.cloudflare.com is Cloudflare Turnstile, the human check on sign-up and
+		# forgot-password (site/src/components/Turnstile.tsx, backend/app/abuse/turnstile.py): its
+		# one script in script-src and the frame it draws the check in in frame-src - the two
+		# directives Cloudflare documents, and nothing wider (connect-src stays 'self'; the token is
+		# verified by the API, server to server). This header is static, so the host is allowed even
+		# while TURNSTILE_SITE_KEY is blank; nothing on the site loads from it until the key is set.
+		# No Google Fonts allowance. `next/font/google` downloads the faces at build time and
+		# serves them from our own origin, so the two allowances this policy used to carry were
+		# dead: measured on /pricing, every face comes from /_next/static/media/*.woff2 and not
+		# one request leaves for fonts.googleapis.com or fonts.gstatic.com. Re-add them only if
+		# something stops using next/font - a stylesheet `@import` would fail silently and the
+		# page would quietly fall back to a system face.
+		# Google Analytics 4 (site/src/lib/analytics.ts): the tag script from www.googletagmanager.com
+		# and its collection requests to the google-analytics.com and analytics.google.com hosts, in
+		# connect-src and img-src because the tag falls back to an image beacon. Added 28 Oct 2026;
+		# the script loads only after a visitor allows it, so the allowance is idle until then.
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://www.google-analytics.com https://*.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.googletagmanager.com; frame-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com https://billing.stripe.com"
+		-Server
+	}
+}
+
+# --- www, so the name people type is not the one that breaks ------------------------------------
+# `www.npimark.com` does not resolve today, and the tempting fix is to add the DNS record. Adding
+# it without this block is worse than leaving it: the request would reach Caddy, which has no site
+# address matching that name, so no certificate is ever issued for it and the visitor meets a TLS
+# warning before they see anything of ours. A name that does not resolve at least fails cleanly.
+#
+# One redirect, so the record can be added whenever and this side is already right. Apex is the
+# canonical name - it is what is on the pricing page, in the legal text and in SITE_BASE_URL - and
+# a permanent redirect is what keeps a search engine from indexing both.
+www.{$SITE_DOMAIN} {
+	import hardened
+	import accesslog
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+# --- the customer site -------------------------------------------------------------------------
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	import hardened
+	import accesslog
+
+	# The signed-in app and the auth handlers are served by the site itself (they are its own
+	# route handlers, not the platform's), so they are allowed - but they are never cached.
+	@private path /app* /api/auth/* /api/app/* /api/privacy/* /remove-my-information/confirm*
+	header @private Cache-Control "private, no-store"
+
+	# Next's own build output is immutable and hashed.
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	reverse_proxy site:3000 {
+		# The visitor's real address, resolved here and nowhere else. With trusted_proxies_strict,
+		# {client_ip} walks the chain from the right to the first hop outside trusted_proxies, so a
+		# client cannot choose its own value by sending X-Forwarded-For - behind Cloudflare the
+		# chain's leftmost entry is exactly what the client typed. The site forwards this one
+		# address to the API, whose sign-up, sign-in and reset limits are per IP; without it every
+		# visitor arrived as the site's own container and one busy hour closed sign-up for everyone.
+		header_up X-Real-IP {client_ip}
+		health_uri /
+		health_interval 5s
+		health_timeout 3s
+		# A deploy replaces the container; hold the request rather than failing it.
+		lb_try_duration 20s
+		lb_try_interval 250ms
+	}
+}
+
+# --- the versioned API, and only the versioned API ---------------------------------------------
+{$API_DOMAIN} {
+	encode zstd gzip
+	import hardened
+	import accesslog
+
+	# The one public path. Everything else on this hostname is a 404 - not a redirect, not a
+	# proxy - so an admin endpoint cannot be reached by guessing a path on the public name.
+	handle /v1/* {
+		rewrite * /api{uri}
+		reverse_proxy api:8000 {
+			# One resolved address rather than the whole chain, for the same reason as the site's
+			# X-Real-IP: uvicorn trusts forwarded headers from anywhere on the internal network, and
+			# it must not be handed a value the client wrote.
+			header_up X-Forwarded-For {client_ip}
+			health_uri /api/health
+			health_interval 5s
+			health_timeout 3s
+			lb_try_duration 20s
+		}
+	}
+
+	# The OpenAPI document and the health check, because an integrator needs both and neither
+	# exposes anything a key could not already read.
+	#
+	# `/api/openapi-public.json`, not `/api/openapi.json`. The second is the application
+	# describing itself - every admin screen's endpoint and every import route it has - and
+	# `create_app()` turns it off in production, so this used to proxy to a 404 on the one host
+	# it was written for. The first is the published document: the `/v1` paths and the schemas
+	# they return, projected from the running code by `app.api.public_spec` - the same
+	# projection `docs/openapi.json` holds. It answers whatever APP_ENV is, because it is the
+	# contract and not a map of anything.
+	handle /openapi.json {
+		rewrite * /api/openapi-public.json
+		reverse_proxy api:8000
+	}
+	handle /health {
+		rewrite * /api/health
+		reverse_proxy api:8000
+	}
+
+	# Stripe's webhook, and nothing beside it: one exact path, POST only, rewritten to the one
+	# API route that takes it. It needs no session - the API believes it on its HMAC signature
+	# (app/stripe_billing.py) and answers 404 until STRIPE_WEBHOOK_SECRET is set. In the Stripe
+	# dashboard the endpoint URL is https://{$API_DOMAIN}/stripe/webhook.
+	@stripe_webhook {
+		path /stripe/webhook
+		method POST
+	}
+	handle @stripe_webhook {
+		rewrite * /api/billing/stripe/webhook
+		reverse_proxy api:8000
+	}
+
+	handle {
+		respond "Not found. The public API lives under /v1 - see the reference on the site." 404
+	}
+}
+
+# --- the admin tool on its own hostname -------------------------------------------------------
+#
+# For a host that serves the admin at a public name rather than over the tailnet. It lives here
+# and not in `Caddyfile` because that file is the tailnet edge and never learns a public name:
+# the hostname terminates here and proxies inward, which is the rule that protects it.
+#
+# This block was added to the running host by hand on 6 October and NOT to this file, which is
+# the copy `deploy.yml` scp's over the host's. The next release would have replaced the host's
+# Caddyfile with one that has no admin block and taken the admin tool down - so it is here now.
+# An EMPTY `ADMIN_DOMAIN` is the broken case once this block exists: the address expands to
+# nothing and `caddy validate` fails with "server block without any key is global configuration".
+# docker-compose.yml therefore defaults it to `localhost`, which parses, is signed by Caddy's
+# internal CA rather than ACME, and is unreachable from outside the container.
+{$ADMIN_DOMAIN} {
+	import hardened
+	import accesslog
+
+	# An admin tool over 266M consumer records has no business in a search index. These bind only
+	# crawlers that choose to obey them - what actually protects this is the login. The hostname
+	# is public knowledge the moment a certificate issues, through certificate transparency, so
+	# "nobody knows the URL" was never a defence.
+	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+	handle /robots.txt {
+		header Content-Type text/plain
+		respond "User-agent: *
+Disallow: /" 200
+	}
+	handle /sitemap.xml {
+		respond 404
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000 {
+			health_uri /api/health
+			health_interval 3s
+			health_timeout 2s
+			lb_try_duration 30s
+			lb_try_interval 250ms
+		}
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+# --- staging's admin on its own hostname ------------------------------------------------------
+#
+# Staging is a separate Compose project, reached over the `shared` network rather than a host
+# port: its web container publishes on the host's loopback and a container cannot reach a
+# loopback-bound port. `stg-web` is the alias that container carries on that network - not `web`,
+# which both projects have.
+#
+# One proxy target, not two: staging's web container is itself Caddy with `infra/Caddyfile`, which
+# binds `:80` for any Host and already proxies /api to staging's own api. There are no health
+# checks here for the same reason - the thing being proxied to is a proxy, and it is staging.
+#
+# An EMPTY `STG_DOMAIN` breaks the whole file ("server block without any key is global
+# configuration"), so docker-compose.yml defaults it to `stg.localhost` - distinct from
+# ADMIN_DOMAIN's `localhost`, because two site blocks cannot share one address.
+#
+# Behind a password, because this block is the one exception to the rule the top of this file is
+# built on. `Caddyfile` must never learn a public hostname, so that no admin screen and no session
+# endpoint is a DNS record away from the internet - and then this block publishes staging's admin
+# on exactly such a hostname. Measured from the open internet on 2026-10-16, before this gate:
+#
+#     GET https://<stg>/api/docs               200  a browsable Swagger UI of every route
+#     GET https://<stg>/api/openapi.json       200  the whole internal surface, 500-odd paths
+#     GET https://<stg>/api/auth/csrf          200  {"csrf_token":"..."} - a live session endpoint
+#
+# None of that is a defect in staging: `stg-web` is staging's own Caddy and it proxies /api to
+# staging's api because the admin app it serves cannot work otherwise. The defect is that the
+# whole thing was reachable without a credential. So the gate goes in front of the entire vhost
+# rather than in front of chosen paths - blocking /api would leave a published admin app that
+# cannot sign in, which is a worse answer than a password.
+#
+# `STG_BASIC_AUTH_HASH` defaults to a valid bcrypt hash of a random value that was generated and
+# discarded, so the default state is locked rather than open: an operator who publishes this
+# hostname without setting a password gets 401 on everything, not an open admin. Set a real one
+# with
+#
+#     docker run --rm caddy:2-alpine caddy hash-password --plaintext 'the password'
+#
+# and put the output in infra/.env as STG_BASIC_AUTH_HASH, with STG_BASIC_AUTH_USER beside it.
+# Rotating it is editing that file and restarting the edge; no certificate or DNS is involved.
+{$STG_DOMAIN} {
+	import hardened
+	import accesslog
+
+	# An allowlisted address skips the password; everyone else is asked for it. The password
+	# stays as the fallback rather than being replaced, because 49.x is a consumer broadband
+	# range and an operator whose address has changed should be able to get in rather than be
+	# locked out of their own staging site until somebody edits a config.
+	#
+	# `STG_ALLOW_IPS` defaults to 192.0.2.1 - TEST-NET-1 from RFC 5737, which is reserved for
+	# documentation and cannot be anybody's real address. So the unset state asks everyone for
+	# the password, and an empty default would instead be a config error that takes the whole
+	# public edge down, production included.
+	#
+	# `remote_ip` is the real client here, not a proxy: `trusted_proxies` above lists
+	# Cloudflare's ranges and `trusted_proxies_strict` takes the first address from the right
+	# that is not one of them.
+	# One exact machine route past the password: the staging MCP service's bearer adapter
+	# (`infra/docker-compose.stg.yml`, service `mcp`) reads providers through
+	# `POST /api/mcp/read` on this hostname, authenticating with a resource-bound token the
+	# backend checks itself. A browser password in front of it would stop every tool call;
+	# nothing else on this host changes. Bounded body, like the service's own limit.
+	@mcp_read {
+		method POST
+		path /api/mcp/read
+	}
+	@needs_password {
+		not remote_ip {$STG_ALLOW_IPS}
+		not {
+			method POST
+			path /api/mcp/read
+		}
+	}
+	basic_auth @needs_password {
+		{$STG_BASIC_AUTH_USER} {$STG_BASIC_AUTH_HASH}
+	}
+	handle @mcp_read {
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy stg-web:80
+	}
+
+	# Staging serves the same pages as production from a copy of the same data, and a crawler
+	# cannot tell them apart. The web container sets these too; they are repeated at the edge so an
+	# error page or a redirect that never reaches the container still carries them.
+	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+	handle /robots.txt {
+		header Content-Type text/plain
+		respond "User-agent: *
+Disallow: /" 200
+	}
+	handle /sitemap.xml {
+		respond 404
+	}
+
+	handle {
+		reverse_proxy stg-web:80
+	}
+}
+
+# --- staging's customer site, on an npimark hostname --------------------------------------------
+#
+# The site had a container and no address. `stg-site` has been running and healthy, resolvable from
+# this edge at `stg-site:3000`, and routed from nowhere - so staging had a copy of the customer site
+# that nobody could open, and a developer reviewing it had to run it on a laptop against staging's
+# API instead of looking at the thing we actually deploy.
+#
+# On an `npimark` hostname rather than beside the admin app on `list-smarter.com`, because that is
+# what it is: `stg.list-smarter.com` serves the data intelligence tool, and a customer site sharing
+# that hostname is a copy of production's front end answering on the wrong brand.
+#
+# Behind the same password and the same allowlist as the admin block. It is pre-release work on a
+# public hostname, so the same two reasons apply, and sharing the variables means one password to
+# rotate rather than two to forget.
+#
+# It talks to staging's API over the internal network (`NPI_API_BASE_URL=http://api:8000`), so
+# nothing here proxies `/api` - the browser never calls the platform directly, the site's own
+# server does. Its `/app` and `/api/auth` routes are its own handlers, exactly as on npimark.com.
+{$STG_SITE_DOMAIN} {
+	import hardened
+	import accesslog
+
+	# A copy of production's pages from a copy of the data, and a crawler cannot tell them apart.
+	# Repeated at the edge so an error page or a redirect that never reaches the container still
+	# carries them.
+	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+	handle /robots.txt {
+		header Content-Type text/plain
+		respond "User-agent: *
+Disallow: /" 200
+	}
+	handle /sitemap.xml {
+		respond 404
+	}
+
+	# Three exact machine routes bypass the staging browser password: Stripe's webhook (the
+	# backend still requires a valid Stripe-Signature), and the two OAuth routes an AI client
+	# reads without a browser - the authorization-server metadata and the token exchange
+	# (`site/src/app/api/mcp/oauth/token`, code + PKCE, authenticated by the backend). The
+	# consent page `/connect/ai` stays behind the password: a person opens it, and on staging
+	# that person knows the password. Never a browser challenge on either machine route.
+	@needs_password {
+		not remote_ip {$STG_ALLOW_IPS}
+		not {
+			method POST
+			path /stripe/webhook
+		}
+		not {
+			method GET
+			path /.well-known/oauth-authorization-server/api/mcp/oauth
+		}
+		not {
+			method POST
+			path /api/mcp/oauth/token
+		}
+	}
+	basic_auth @needs_password {
+		{$STG_BASIC_AUTH_USER} {$STG_BASIC_AUTH_HASH}
+	}
+
+	# The token form is small; anything bigger is not a token request.
+	@mcp_token {
+		method POST
+		path /api/mcp/oauth/token
+	}
+	handle @mcp_token {
+		request_body {
+			max_size 8KB
+		}
+		header Cache-Control "no-store"
+		reverse_proxy stg-site:3000
+	}
+
+	@staging_stripe_webhook {
+		method POST
+		path /stripe/webhook
+	}
+	handle @staging_stripe_webhook {
+		rewrite * /api/billing/stripe/webhook
+		reverse_proxy stg-web:80
+	}
+
+	handle {
+		reverse_proxy stg-site:3000
+	}
+}
+
+# --- staging's MCP host --------------------------------------------------------------------------
+#
+# The remote MCP service for the ChatGPT and Claude pilot (integrations/mcp-remote), on its own
+# hostname because an AI client connects to a URL ending in /mcp and reads the protected-resource
+# metadata beside it, and neither belongs on the customer site's hostname. Staging only: there is
+# no production MCP host, and the backend's NPI_MCP_ENABLED stays unset in production.
+#
+# No password and no challenge: the clients are machines (Anthropic's egress is 160.79.104.0/21;
+# OpenAI publishes its own), the service answers 401 with the resource metadata until a bearer
+# token is presented, and every tool call is authenticated by the backend. The hostname must be
+# DNS-only (not proxied), like the other staging hostnames - a browser challenge in front of
+# /mcp breaks the connection before it starts.
+#
+# Two exact paths and nothing else. The default hostname means an edge that has not had
+# STG_MCP_DOMAIN added to infra/.env still validates, rather than taking every host down with it.
+{$STG_MCP_DOMAIN:stg-mcp.npimark.com} {
+	import hardened
+	import accesslog
+
+	header X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+	header Cache-Control "no-store"
+
+	@mcp path /mcp /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/*
+	handle @mcp {
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy stg-mcp:8080 {
+			# Streamable HTTP holds a response open; give a tool call the time the clients allow.
+			transport http {
+				response_header_timeout 120s
+			}
+			health_uri /.well-known/oauth-protected-resource/mcp
+			health_interval 10s
+			health_timeout 3s
+			lb_try_duration 20s
+			lb_try_interval 250ms
+		}
+	}
+
+	handle {
+		respond 404
+	}
+}

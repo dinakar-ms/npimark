@@ -1,0 +1,28 @@
+{
+  "name": "npi-intelligence-site",
+  "version": "5.0.0-dev",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint && node scripts/no-trackers.mjs && node scripts/a11y-static.mjs && node scripts/no-request-url-redirects.mjs && node scripts/cache-headers.mjs && node scripts/layout-rules.mjs && node scripts/draft-pages-noindex.mjs && node scripts/live-data-rendering.mjs",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"src/**/*.test.mjs\" && node scripts/no-trackers.mjs && node scripts/a11y-static.mjs && node scripts/no-request-url-redirects.mjs && node scripts/cache-headers.mjs && node scripts/layout-rules.mjs && node scripts/draft-pages-noindex.mjs && node scripts/live-data-rendering.mjs && node --test scripts/live-data-rendering.test.mjs"
+  },
+  "dependencies": {
+    "next": "16.3.5",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "uqr": "0.1.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "typescript": "^5"
+  }
+}
